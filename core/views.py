@@ -1,8 +1,11 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth import authenticate, login
+from django.db.models import Count, Q
 from django.contrib import messages
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from .models import User, Beneficiary, Case, CaseNote, Assessment, AssessmentQuestion, AssessmentAnswer
@@ -10,6 +13,26 @@ from .serializers import (
     UserSerializer, BeneficiarySerializer, CaseSerializer, CaseNoteSerializer,
     AssessmentSerializer, AssessmentQuestionSerializer, AssessmentAnswerSerializer
 )
+
+# Authentication Views
+def login_view(request):
+    """Custom login view that serves the login page at the root URL"""
+    if request.user.is_authenticated:
+        return redirect('dashboard_redirect')
+
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            login(request, user)
+            next_url = request.GET.get('next', 'dashboard_redirect')
+            return redirect(next_url)
+        else:
+            messages.error(request, "Invalid username or password.")
+
+    return render(request, 'login.html')
 
 # API ViewSets
 class UserViewSet(viewsets.ModelViewSet):
@@ -45,6 +68,128 @@ class AssessmentAnswerViewSet(viewsets.ModelViewSet):
     queryset = AssessmentAnswer.objects.all()
     serializer_class = AssessmentAnswerSerializer
     permission_classes = [IsAuthenticated]
+
+# Custom Mixins
+class RoleRequiredMixin(UserPassesTestMixin):
+    """Mixin that checks if the user has the required role(s)"""
+    allowed_roles = []
+
+    def test_func(self):
+        return self.request.user.role in self.allowed_roles
+
+class AdminRequiredMixin(RoleRequiredMixin):
+    """Mixin that checks if the user is an admin"""
+    allowed_roles = ['admin']
+
+class AdminOrCaseManagerRequiredMixin(RoleRequiredMixin):
+    """Mixin that checks if the user is an admin or case manager"""
+    allowed_roles = ['admin', 'case_manager']
+
+class AnyRoleRequiredMixin(RoleRequiredMixin):
+    """Mixin that allows any authenticated user with a valid role"""
+    allowed_roles = ['admin', 'case_manager', 'field_officer']
+
+# Beneficiary Views
+class BeneficiaryListView(LoginRequiredMixin, AnyRoleRequiredMixin, ListView):
+    model = Beneficiary
+    template_name = 'beneficiaries/beneficiary_list.html'
+    context_object_name = 'beneficiaries'
+    paginate_by = 10
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Apply search filter
+        search_query = self.request.GET.get('search', '')
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) | 
+                Q(address__icontains=search_query)
+            )
+
+        # Apply gender filter
+        gender = self.request.GET.get('gender', '')
+        if gender:
+            queryset = queryset.filter(gender=gender)
+
+        # Apply sorting
+        sort = self.request.GET.get('sort', 'name')
+        queryset = queryset.order_by(sort)
+
+        return queryset
+
+class BeneficiaryDetailView(LoginRequiredMixin, AnyRoleRequiredMixin, DetailView):
+    model = Beneficiary
+    template_name = 'beneficiaries/beneficiary_detail.html'
+    context_object_name = 'beneficiary'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        beneficiary = self.get_object()
+
+        # Get related data
+        context['cases'] = Case.objects.filter(beneficiary=beneficiary)
+        context['active_cases'] = context['cases'].filter(status='open')
+
+        # Get assessments from all cases
+        case_ids = context['cases'].values_list('id', flat=True)
+        context['assessments'] = Assessment.objects.filter(case__id__in=case_ids)
+
+        # Get case notes from all cases
+        context['case_notes'] = CaseNote.objects.filter(case__id__in=case_ids)
+
+        return context
+
+class BeneficiaryCreateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, CreateView):
+    model = Beneficiary
+    template_name = 'beneficiaries/beneficiary_form.html'
+    fields = ['name', 'gender', 'dob', 'address']
+
+    def get_success_url(self):
+        return reverse('beneficiary_detail', kwargs={'pk': self.object.pk})
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Beneficiary '{form.instance.name}' created successfully.")
+        return super().form_valid(form)
+
+class BeneficiaryUpdateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, UpdateView):
+    model = Beneficiary
+    template_name = 'beneficiaries/beneficiary_form.html'
+    fields = ['name', 'gender', 'dob', 'address']
+
+    def get_success_url(self):
+        return reverse('beneficiary_detail', kwargs={'pk': self.object.pk})
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Beneficiary '{form.instance.name}' updated successfully.")
+        return super().form_valid(form)
+
+class BeneficiaryDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+    model = Beneficiary
+    template_name = 'beneficiaries/beneficiary_confirm_delete.html'
+    context_object_name = 'beneficiary'
+    success_url = reverse_lazy('beneficiary_list')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        beneficiary = self.get_object()
+
+        # Get related data
+        context['cases'] = Case.objects.filter(beneficiary=beneficiary)
+
+        # Get assessments from all cases
+        case_ids = context['cases'].values_list('id', flat=True)
+        context['assessments'] = Assessment.objects.filter(case__id__in=case_ids)
+
+        # Get case notes from all cases
+        context['case_notes'] = CaseNote.objects.filter(case__id__in=case_ids)
+
+        return context
+
+    def delete(self, request, *args, **kwargs):
+        beneficiary = self.get_object()
+        messages.success(request, f"Beneficiary '{beneficiary.name}' deleted successfully.")
+        return super().delete(request, *args, **kwargs)
 
 # Dashboard Views
 @login_required

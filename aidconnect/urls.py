@@ -40,7 +40,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # API and authentication
-    path('api/', include(('core.urls', 'core'), namespace='api')),
     path('api-auth/', include('rest_framework.urls')),
 
     # Swagger documentation URLs
@@ -48,6 +47,6 @@ urlpatterns = [
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 
-    # Include core URLs for dashboards and authentication
+    # Include core URLs for dashboards, API, and authentication
     path('', include('core.urls')),
 ]

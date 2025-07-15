@@ -5,7 +5,7 @@
 {% block content %}
 <div class="container-fluid">
     <h1 class="mt-4 mb-4">Case Manager Dashboard</h1>
-    
+
     <!-- Overview Cards -->
     <div class="row">
         <div class="col-xl-4 col-md-6">
@@ -25,7 +25,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="col-xl-4 col-md-6">
             <div class="card bg-success text-white">
                 <div class="card-body">
@@ -38,12 +38,12 @@
                     </div>
                 </div>
                 <div class="card-footer d-flex align-items-center justify-content-between">
-                    <a href="/api/beneficiaries/" class="text-white">View Details</a>
+                    <a href="{% url 'beneficiary_list' %}" class="text-white">View Details</a>
                     <i class="bi bi-arrow-right text-white"></i>
                 </div>
             </div>
         </div>
-        
+
         <div class="col-xl-4 col-md-6">
             <div class="card bg-warning text-white">
                 <div class="card-body">
@@ -62,7 +62,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- My Cases -->
     <div class="row mt-4">
         <div class="col-12">
@@ -113,7 +113,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Recent Case Notes -->
     <div class="row mt-4">
         <div class="col-12">
@@ -155,7 +155,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Quick Actions -->
     <div class="row mt-4">
         <div class="col-12">
@@ -166,7 +166,7 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-4">
-                            <a href="/admin/core/beneficiary/add/" class="btn btn-success btn-lg w-100 mb-3">
+                            <a href="{% url 'beneficiary_create' %}" class="btn btn-success btn-lg w-100 mb-3">
                                 <i class="bi bi-person-plus-fill me-2"></i> Add Beneficiary
                             </a>
                         </div>
