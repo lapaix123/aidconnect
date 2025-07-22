@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth import authenticate, login
@@ -118,6 +118,45 @@ class BeneficiaryListView(LoginRequiredMixin, AnyRoleRequiredMixin, ListView):
 
         return queryset
 
+# Case Views
+class CaseListView(LoginRequiredMixin, AnyRoleRequiredMixin, ListView):
+    model = Case
+    template_name = 'cases/case_list.html'
+    context_object_name = 'cases'
+    paginate_by = 10
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Filter cases based on user role
+        if self.request.user.role == 'case_manager':
+            queryset = queryset.filter(case_manager=self.request.user)
+        elif self.request.user.role == 'field_officer':
+            # Field officers can only see cases they've contributed to
+            case_notes = CaseNote.objects.filter(created_by=self.request.user).values_list('case_id', flat=True)
+            assessments = Assessment.objects.filter(created_by=self.request.user).values_list('case_id', flat=True)
+            queryset = queryset.filter(Q(id__in=case_notes) | Q(id__in=assessments)).distinct()
+
+        # Apply search filter
+        search_query = self.request.GET.get('search', '')
+        if search_query:
+            queryset = queryset.filter(
+                Q(title__icontains=search_query) | 
+                Q(description__icontains=search_query) |
+                Q(beneficiary__name__icontains=search_query)
+            )
+
+        # Apply status filter
+        status = self.request.GET.get('status', '')
+        if status:
+            queryset = queryset.filter(status=status)
+
+        # Apply sorting
+        sort = self.request.GET.get('sort', '-created_at')
+        queryset = queryset.order_by(sort)
+
+        return queryset
+
 class BeneficiaryDetailView(LoginRequiredMixin, AnyRoleRequiredMixin, DetailView):
     model = Beneficiary
     template_name = 'beneficiaries/beneficiary_detail.html'
@@ -139,6 +178,332 @@ class BeneficiaryDetailView(LoginRequiredMixin, AnyRoleRequiredMixin, DetailView
         context['case_notes'] = CaseNote.objects.filter(case__id__in=case_ids)
 
         return context
+
+class CaseDetailView(LoginRequiredMixin, AnyRoleRequiredMixin, DetailView):
+    model = Case
+    template_name = 'cases/case_detail.html'
+    context_object_name = 'case'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        case = self.get_object()
+
+        # Get related data
+        context['assessments'] = Assessment.objects.filter(case=case).order_by('-created_at')
+        context['case_notes'] = CaseNote.objects.filter(case=case).order_by('-created_at')
+
+        return context
+
+class CaseCreateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, CreateView):
+    model = Case
+    template_name = 'cases/case_form.html'
+    fields = ['title', 'beneficiary', 'status', 'description']
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # Limit beneficiary choices based on user role
+        if self.request.user.role == 'case_manager':
+            # Case managers can see all beneficiaries
+            pass
+        return form
+
+    def form_valid(self, form):
+        # Set the case manager to the current user if they are a case manager
+        if self.request.user.role == 'case_manager':
+            form.instance.case_manager = self.request.user
+        messages.success(self.request, f"Case '{form.instance.title}' created successfully.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('case_detail', kwargs={'pk': self.object.pk})
+
+class CaseUpdateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, UpdateView):
+    model = Case
+    template_name = 'cases/case_form.html'
+    fields = ['title', 'beneficiary', 'status', 'description']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Case managers can only update their own cases
+        if self.request.user.role == 'case_manager':
+            queryset = queryset.filter(case_manager=self.request.user)
+        return queryset
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Case '{form.instance.title}' updated successfully.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('case_detail', kwargs={'pk': self.object.pk})
+
+class CaseDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+    model = Case
+    template_name = 'cases/case_confirm_delete.html'
+    context_object_name = 'case'
+    success_url = reverse_lazy('case_list')
+
+    def delete(self, request, *args, **kwargs):
+        case = self.get_object()
+        messages.success(request, f"Case '{case.title}' deleted successfully.")
+        return super().delete(request, *args, **kwargs)
+
+# Assessment Views
+class AssessmentListView(LoginRequiredMixin, AnyRoleRequiredMixin, ListView):
+    model = Assessment
+    template_name = 'assessments/assessment_list.html'
+    context_object_name = 'assessments'
+    paginate_by = 10
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Filter assessments based on user role
+        if self.request.user.role == 'case_manager':
+            # Case managers can see assessments for their cases
+            case_ids = Case.objects.filter(case_manager=self.request.user).values_list('id', flat=True)
+            queryset = queryset.filter(case__id__in=case_ids)
+        elif self.request.user.role == 'field_officer':
+            # Field officers can only see assessments they created
+            queryset = queryset.filter(created_by=self.request.user)
+
+        # Apply search filter
+        search_query = self.request.GET.get('search', '')
+        if search_query:
+            queryset = queryset.filter(
+                Q(title__icontains=search_query) | 
+                Q(description__icontains=search_query) |
+                Q(case__title__icontains=search_query) |
+                Q(case__beneficiary__name__icontains=search_query)
+            )
+
+        # Apply sorting
+        sort = self.request.GET.get('sort', '-created_at')
+        queryset = queryset.order_by(sort)
+
+        return queryset
+
+class AssessmentDetailView(LoginRequiredMixin, AnyRoleRequiredMixin, DetailView):
+    model = Assessment
+    template_name = 'assessments/assessment_detail.html'
+    context_object_name = 'assessment'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        assessment = self.get_object()
+
+        # Get related data
+        context['questions'] = AssessmentQuestion.objects.filter(assessment=assessment).order_by('order')
+        context['answers'] = AssessmentAnswer.objects.filter(question__assessment=assessment)
+
+        return context
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Filter based on user role
+        if self.request.user.role == 'case_manager':
+            # Case managers can see assessments for their cases
+            case_ids = Case.objects.filter(case_manager=self.request.user).values_list('id', flat=True)
+            queryset = queryset.filter(case__id__in=case_ids)
+        elif self.request.user.role == 'field_officer':
+            # Field officers can only see assessments they created
+            queryset = queryset.filter(created_by=self.request.user)
+        return queryset
+
+class AssessmentCreateView(LoginRequiredMixin, AnyRoleRequiredMixin, CreateView):
+    model = Assessment
+    template_name = 'assessments/assessment_form.html'
+    fields = ['title', 'case', 'description']
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # Limit case choices based on user role
+        if self.request.user.role == 'case_manager':
+            form.fields['case'].queryset = Case.objects.filter(case_manager=self.request.user)
+        elif self.request.user.role == 'field_officer':
+            # Field officers can see all cases to create assessments
+            # This allows them to contribute to cases even if they haven't before
+            form.fields['case'].queryset = Case.objects.all()
+        return form
+
+    def form_valid(self, form):
+        # Set the creator to the current user
+        form.instance.created_by = self.request.user
+        messages.success(self.request, f"Assessment '{form.instance.title}' created successfully.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('assessment_detail', kwargs={'pk': self.object.pk})
+
+class AssessmentUpdateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, UpdateView):
+    model = Assessment
+    template_name = 'assessments/assessment_form.html'
+    fields = ['title', 'case', 'description']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Case managers can only update assessments for their cases
+        if self.request.user.role == 'case_manager':
+            case_ids = Case.objects.filter(case_manager=self.request.user).values_list('id', flat=True)
+            queryset = queryset.filter(case__id__in=case_ids)
+        return queryset
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # Limit case choices based on user role
+        if self.request.user.role == 'case_manager':
+            form.fields['case'].queryset = Case.objects.filter(case_manager=self.request.user)
+        return form
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Assessment '{form.instance.title}' updated successfully.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('assessment_detail', kwargs={'pk': self.object.pk})
+
+class AssessmentDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+    model = Assessment
+    template_name = 'assessments/assessment_confirm_delete.html'
+    context_object_name = 'assessment'
+    success_url = reverse_lazy('assessment_list')
+
+    def delete(self, request, *args, **kwargs):
+        assessment = self.get_object()
+        messages.success(request, f"Assessment '{assessment.title}' deleted successfully.")
+        return super().delete(request, *args, **kwargs)
+
+# Case Note Views
+class CaseNoteListView(LoginRequiredMixin, AnyRoleRequiredMixin, ListView):
+    model = CaseNote
+    template_name = 'case_notes/case_note_list.html'
+    context_object_name = 'case_notes'
+    paginate_by = 10
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Filter case notes based on user role
+        if self.request.user.role == 'case_manager':
+            # Case managers can see notes for their cases
+            case_ids = Case.objects.filter(case_manager=self.request.user).values_list('id', flat=True)
+            queryset = queryset.filter(case__id__in=case_ids)
+        elif self.request.user.role == 'field_officer':
+            # Field officers can only see notes they created
+            queryset = queryset.filter(created_by=self.request.user)
+
+        # Apply search filter
+        search_query = self.request.GET.get('search', '')
+        if search_query:
+            queryset = queryset.filter(
+                Q(content__icontains=search_query) | 
+                Q(case__title__icontains=search_query) |
+                Q(case__beneficiary__name__icontains=search_query)
+            )
+
+        # Apply sorting
+        sort = self.request.GET.get('sort', '-created_at')
+        queryset = queryset.order_by(sort)
+
+        return queryset
+
+class CaseNoteDetailView(LoginRequiredMixin, AnyRoleRequiredMixin, DetailView):
+    model = CaseNote
+    template_name = 'case_notes/case_note_detail.html'
+    context_object_name = 'case_note'
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Filter based on user role
+        if self.request.user.role == 'case_manager':
+            # Case managers can see notes for their cases
+            case_ids = Case.objects.filter(case_manager=self.request.user).values_list('id', flat=True)
+            queryset = queryset.filter(case__id__in=case_ids)
+        elif self.request.user.role == 'field_officer':
+            # Field officers can only see notes they created
+            queryset = queryset.filter(created_by=self.request.user)
+        return queryset
+
+class CaseNoteCreateView(LoginRequiredMixin, AnyRoleRequiredMixin, CreateView):
+    model = CaseNote
+    template_name = 'case_notes/case_note_form.html'
+    fields = ['case', 'content']
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # Limit case choices based on user role
+        if self.request.user.role == 'case_manager':
+            form.fields['case'].queryset = Case.objects.filter(case_manager=self.request.user)
+        elif self.request.user.role == 'field_officer':
+            # Field officers can see all cases to create notes
+            # This allows them to contribute to cases even if they haven't before
+            form.fields['case'].queryset = Case.objects.all()
+        return form
+
+    def form_valid(self, form):
+        # Set the creator to the current user
+        form.instance.created_by = self.request.user
+        messages.success(self.request, "Case note created successfully.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('case_note_detail', kwargs={'pk': self.object.pk})
+
+class CaseNoteUpdateView(LoginRequiredMixin, AnyRoleRequiredMixin, UpdateView):
+    model = CaseNote
+    template_name = 'case_notes/case_note_form.html'
+    fields = ['case', 'content']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Users can only update their own notes
+        queryset = queryset.filter(created_by=self.request.user)
+        return queryset
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # Limit case choices based on user role
+        if self.request.user.role == 'case_manager':
+            form.fields['case'].queryset = Case.objects.filter(case_manager=self.request.user)
+        elif self.request.user.role == 'field_officer':
+            # Field officers can see all cases when updating notes
+            # This allows them to move their notes to different cases if needed
+            form.fields['case'].queryset = Case.objects.all()
+        return form
+
+    def form_valid(self, form):
+        messages.success(self.request, "Case note updated successfully.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('case_note_detail', kwargs={'pk': self.object.pk})
+
+class CaseNoteDeleteView(LoginRequiredMixin, AnyRoleRequiredMixin, DeleteView):
+    model = CaseNote
+    template_name = 'case_notes/case_note_confirm_delete.html'
+    context_object_name = 'case_note'
+    success_url = reverse_lazy('case_note_list')
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Users can only delete their own notes, admins can delete any
+        if self.request.user.role != 'admin':
+            queryset = queryset.filter(created_by=self.request.user)
+        return queryset
+
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, "Case note deleted successfully.")
+        return super().delete(request, *args, **kwargs)
+
+# Visit Views (for Field Officers)
+class VisitListView(CaseNoteListView):
+    """Alias for CaseNoteListView with a different template for Field Officers"""
+    template_name = 'visits/visit_list.html'
+
+    def get_queryset(self):
+        # Ensure only field officers can access this view
+        if self.request.user.role != 'field_officer':
+            return CaseNote.objects.none()
+        return super().get_queryset()
 
 class BeneficiaryCreateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, CreateView):
     model = Beneficiary

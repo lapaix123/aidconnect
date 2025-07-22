@@ -20,7 +20,7 @@
                     </div>
                 </div>
                 <div class="card-footer d-flex align-items-center justify-content-between">
-                    <a href="/api/assessments/?created_by={{ user.id }}" class="text-white">View Details</a>
+                    <a href="{% url 'assessment_list' %}" class="text-white">View Details</a>
                     <i class="bi bi-arrow-right text-white"></i>
                 </div>
             </div>
@@ -38,7 +38,7 @@
                     </div>
                 </div>
                 <div class="card-footer d-flex align-items-center justify-content-between">
-                    <a href="/api/case-notes/?created_by={{ user.id }}" class="text-white">View Details</a>
+                    <a href="{% url 'visit_list' %}" class="text-white">View Details</a>
                     <i class="bi bi-arrow-right text-white"></i>
                 </div>
             </div>
@@ -69,7 +69,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Recent Assessments</h5>
-                    <a href="/api/assessments/?created_by={{ user.id }}" class="btn btn-primary btn-sm">View All</a>
+                    <a href="{% url 'assessment_list' %}" class="btn btn-primary btn-sm">View All</a>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -91,8 +91,8 @@
                                     <td>{{ assessment.case.beneficiary.name }}</td>
                                     <td>{{ assessment.created_at|date:"M d, Y" }}</td>
                                     <td>
-                                        <a href="/api/assessments/{{ assessment.id }}/" class="btn btn-sm btn-info">View</a>
-                                        <a href="/api/assessment-questions/?assessment={{ assessment.id }}" class="btn btn-sm btn-secondary">Questions</a>
+                                        <a href="{% url 'assessment_detail' assessment.id %}" class="btn btn-sm btn-info">View</a>
+                                        <a href="{% url 'assessment_detail' assessment.id %}" class="btn btn-sm btn-secondary">Questions</a>
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -114,7 +114,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Recent Case Notes</h5>
-                    <a href="/api/case-notes/?created_by={{ user.id }}" class="btn btn-primary btn-sm">View All</a>
+                    <a href="{% url 'visit_list' %}" class="btn btn-primary btn-sm">View All</a>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -136,7 +136,7 @@
                                     <td>{{ note.content|truncatechars:100 }}</td>
                                     <td>{{ note.created_at|date:"M d, Y" }}</td>
                                     <td>
-                                        <a href="/api/case-notes/{{ note.id }}/" class="btn btn-sm btn-info">View</a>
+                                        <a href="{% url 'case_note_detail' note.id %}" class="btn btn-sm btn-info">View</a>
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -162,18 +162,18 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-4">
-                            <a href="/admin/core/assessment/add/" class="btn btn-primary btn-lg w-100 mb-3">
+                            <a href="{% url 'assessment_create' %}" class="btn btn-primary btn-lg w-100 mb-3">
                                 <i class="bi bi-clipboard-plus me-2"></i> New Assessment
                             </a>
                         </div>
                         <div class="col-md-4">
-                            <a href="/admin/core/casenote/add/" class="btn btn-success btn-lg w-100 mb-3">
-                                <i class="bi bi-journal-plus me-2"></i> Add Case Note
+                            <a href="{% url 'case_note_create' %}" class="btn btn-success btn-lg w-100 mb-3">
+                                <i class="bi bi-journal-plus me-2"></i> Add Visit Note
                             </a>
                         </div>
                         <div class="col-md-4">
-                            <a href="/admin/core/assessmentanswer/add/" class="btn btn-warning btn-lg w-100 mb-3">
-                                <i class="bi bi-check-square me-2"></i> Record Assessment Answer
+                            <a href="{% url 'beneficiary_list' %}" class="btn btn-warning btn-lg w-100 mb-3">
+                                <i class="bi bi-people-fill me-2"></i> View Beneficiaries
                             </a>
                         </div>
                     </div>

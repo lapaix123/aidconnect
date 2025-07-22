@@ -6,7 +6,11 @@ from .views import (
     AssessmentViewSet, AssessmentQuestionViewSet, AssessmentAnswerViewSet,
     dashboard_redirect, admin_dashboard, case_manager_dashboard, field_officer_dashboard,
     login_view, BeneficiaryListView, BeneficiaryDetailView, BeneficiaryCreateView,
-    BeneficiaryUpdateView, BeneficiaryDeleteView
+    BeneficiaryUpdateView, BeneficiaryDeleteView,
+    CaseListView, CaseDetailView, CaseCreateView, CaseUpdateView, CaseDeleteView,
+    AssessmentListView, AssessmentDetailView, AssessmentCreateView, AssessmentUpdateView, AssessmentDeleteView,
+    CaseNoteListView, CaseNoteDetailView, CaseNoteCreateView, CaseNoteUpdateView, CaseNoteDeleteView,
+    VisitListView
 )
 
 # API Router
@@ -40,4 +44,28 @@ urlpatterns = [
     path('beneficiaries/<int:pk>/', BeneficiaryDetailView.as_view(), name='beneficiary_detail'),
     path('beneficiaries/<int:pk>/edit/', BeneficiaryUpdateView.as_view(), name='beneficiary_update'),
     path('beneficiaries/<int:pk>/delete/', BeneficiaryDeleteView.as_view(), name='beneficiary_delete'),
+
+    # Case Management
+    path('cases/', CaseListView.as_view(), name='case_list'),
+    path('cases/add/', CaseCreateView.as_view(), name='case_create'),
+    path('cases/<int:pk>/', CaseDetailView.as_view(), name='case_detail'),
+    path('cases/<int:pk>/edit/', CaseUpdateView.as_view(), name='case_update'),
+    path('cases/<int:pk>/delete/', CaseDeleteView.as_view(), name='case_delete'),
+
+    # Assessment Management
+    path('assessments/', AssessmentListView.as_view(), name='assessment_list'),
+    path('assessments/add/', AssessmentCreateView.as_view(), name='assessment_create'),
+    path('assessments/<int:pk>/', AssessmentDetailView.as_view(), name='assessment_detail'),
+    path('assessments/<int:pk>/edit/', AssessmentUpdateView.as_view(), name='assessment_update'),
+    path('assessments/<int:pk>/delete/', AssessmentDeleteView.as_view(), name='assessment_delete'),
+
+    # Case Note Management
+    path('case-notes/', CaseNoteListView.as_view(), name='case_note_list'),
+    path('case-notes/add/', CaseNoteCreateView.as_view(), name='case_note_create'),
+    path('case-notes/<int:pk>/', CaseNoteDetailView.as_view(), name='case_note_detail'),
+    path('case-notes/<int:pk>/edit/', CaseNoteUpdateView.as_view(), name='case_note_update'),
+    path('case-notes/<int:pk>/delete/', CaseNoteDeleteView.as_view(), name='case_note_delete'),
+
+    # Visit Management (for Field Officers)
+    path('visits/', VisitListView.as_view(), name='visit_list'),
 ]

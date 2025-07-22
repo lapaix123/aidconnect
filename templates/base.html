@@ -169,13 +169,18 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/api/cases/">
+                            <a class="nav-link {% if '/cases/' in request.path %}active{% endif %}" href="{% url 'case_list' %}">
                                 <i class="bi bi-folder2-open"></i> All Cases
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/api/assessments/">
+                            <a class="nav-link {% if '/assessments/' in request.path %}active{% endif %}" href="{% url 'assessment_list' %}">
                                 <i class="bi bi-clipboard-data"></i> All Assessments
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if '/case-notes/' in request.path %}active{% endif %}" href="{% url 'case_note_list' %}">
+                                <i class="bi bi-journal-text"></i> All Case Notes
                             </a>
                         </li>
 
@@ -192,17 +197,17 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/api/cases/?case_manager={{ user.id }}">
+                            <a class="nav-link {% if '/cases/' in request.path %}active{% endif %}" href="{% url 'case_list' %}">
                                 <i class="bi bi-folder2-open"></i> Cases
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/api/assessments/?created_by={{ user.id }}">
+                            <a class="nav-link {% if '/assessments/' in request.path %}active{% endif %}" href="{% url 'assessment_list' %}">
                                 <i class="bi bi-clipboard-data"></i> Assessments
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/api/case-notes/?created_by={{ user.id }}">
+                            <a class="nav-link {% if '/case-notes/' in request.path %}active{% endif %}" href="{% url 'case_note_list' %}">
                                 <i class="bi bi-journal-text"></i> Case Notes
                             </a>
                         </li>
@@ -220,12 +225,12 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/api/assessments/?created_by={{ user.id }}">
+                            <a class="nav-link {% if '/assessments/' in request.path %}active{% endif %}" href="{% url 'assessment_list' %}">
                                 <i class="bi bi-clipboard-check"></i> My Assessments
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/api/case-notes/?created_by={{ user.id }}">
+                            <a class="nav-link {% if '/visits/' in request.path %}active{% endif %}" href="{% url 'visit_list' %}">
                                 <i class="bi bi-journal-text"></i> My Visits
                             </a>
                         </li>
