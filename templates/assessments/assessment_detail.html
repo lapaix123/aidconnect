@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ assessment.title }} - AidConnect{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Assessment: {{ assessment.title }}</h1>
+        <div>
+            <a href="{% url 'assessment_list' %}" class="btn btn-secondary me-2">
+                <i class="bi bi-arrow-left me-2"></i> Back to Assessments
+            </a>
+            {% if user.role == 'admin' or user.role == 'case_manager' %}
+            <a href="{% url 'assessment_update' assessment.id %}" class="btn btn-warning me-2">
+                <i class="bi bi-pencil me-2"></i> Edit Assessment
+            </a>
+            {% endif %}
+            {% if user.role == 'admin' %}
+            <a href="{% url 'assessment_delete' assessment.id %}" class="btn btn-danger">
+                <i class="bi bi-trash me-2"></i> Delete Assessment
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Assessment Details -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Assessment Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Case:</div>
+                        <div class="col-md-9">
+                            <a href="{% url 'case_detail' assessment.case.id %}">{{ assessment.case.title }}</a>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Beneficiary:</div>
+                        <div class="col-md-9">
+                            <a href="{% url 'beneficiary_detail' assessment.case.beneficiary.id %}">{{ assessment.case.beneficiary.name }}</a>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Created By:</div>
+                        <div class="col-md-9">{{ assessment.created_by.username }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Created:</div>
+                        <div class="col-md-9">{{ assessment.created_at|date:"F d, Y" }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Last Updated:</div>
+                        <div class="col-md-9">{{ assessment.updated_at|date:"F d, Y" }}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-3 fw-bold">Description:</div>
+                        <div class="col-md-9">{{ assessment.description|linebreaks }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'case_detail' assessment.case.id %}" class="btn btn-primary">
+                            <i class="bi bi-folder2-open me-2"></i> View Case
+                        </a>
+                        <a href="{% url 'case_note_create' %}?case={{ assessment.case.id }}" class="btn btn-success">
+                            <i class="bi bi-journal-plus me-2"></i> Add Case Note
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assessment Questions and Answers -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Questions and Answers</h5>
+        </div>
+        <div class="card-body">
+            {% if questions %}
+                <div class="accordion" id="assessmentQuestions">
+                    {% for question in questions %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading{{ question.id }}">
+                            <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ question.id }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" aria-controls="collapse{{ question.id }}">
+                                <span class="fw-bold">Q{{ forloop.counter }}:</span> {{ question.text }}
+                                <span class="badge bg-secondary ms-2">{{ question.get_question_type_display }}</span>
+                                {% if question.required %}<span class="badge bg-danger ms-2">Required</span>{% endif %}
+                            </button>
+                        </h2>
+                        <div id="collapse{{ question.id }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="heading{{ question.id }}" data-bs-parent="#assessmentQuestions">
+                            <div class="accordion-body">
+                                <div class="row">
+                                    <div class="col-md-3 fw-bold">Question Type:</div>
+                                    <div class="col-md-9">{{ question.get_question_type_display }}</div>
+                                </div>
+                                {% if question.question_type == 'choice' %}
+                                <div class="row mt-2">
+                                    <div class="col-md-3 fw-bold">Choices:</div>
+                                    <div class="col-md-9">
+                                        <ul class="list-group">
+                                            {% for choice in question.choices.split|dictsort:0 %}
+                                                <li class="list-group-item">{{ choice }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                <div class="row mt-3">
+                                    <div class="col-md-3 fw-bold">Answers:</div>
+                                    <div class="col-md-9">
+                                        {% for answer in answers %}
+                                            {% if answer.question.id == question.id %}
+                                                <div class="card mb-2">
+                                                    <div class="card-body">
+                                                        <p class="mb-1">{{ answer.answer_text }}</p>
+                                                        <small class="text-muted">
+                                                            Answered by {{ answer.created_by.username }} on {{ answer.created_at|date:"M d, Y" }}
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            {% endif %}
+                                        {% empty %}
+                                            <p class="text-muted">No answers recorded yet.</p>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    No questions have been added to this assessment yet.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

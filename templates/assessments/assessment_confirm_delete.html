@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Assessment: {{ assessment.title }} - AidConnect{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h1 class="h3 mb-0">Delete Assessment</h1>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>Warning:</strong> This action cannot be undone. All questions and answers associated with this assessment will also be deleted.
+                    </div>
+                    
+                    <p class="mb-4">Are you sure you want to delete the assessment "<strong>{{ assessment.title }}</strong>"?</p>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Assessment Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-2">
+                                <div class="col-md-4 fw-bold">Case:</div>
+                                <div class="col-md-8">{{ assessment.case.title }}</div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-4 fw-bold">Beneficiary:</div>
+                                <div class="col-md-8">{{ assessment.case.beneficiary.name }}</div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-4 fw-bold">Created By:</div>
+                                <div class="col-md-8">{{ assessment.created_by.username }}</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 fw-bold">Created:</div>
+                                <div class="col-md-8">{{ assessment.created_at|date:"F d, Y" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'assessment_detail' assessment.id %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-2"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash me-2"></i> Delete Assessment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

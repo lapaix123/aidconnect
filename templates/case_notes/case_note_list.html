@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block title %}Case Notes - AidConnect{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Case Notes</h1>
+        <a href="{% url 'case_note_create' %}" class="btn btn-primary">
+            <i class="bi bi-journal-plus me-2"></i> Add Case Note
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="search" class="form-label">Search</label>
+                    <input type="text" class="form-control" id="search" name="search" value="{{ request.GET.search|default:'' }}" placeholder="Search by content, case, or beneficiary">
+                </div>
+                <div class="col-md-3">
+                    <label for="case" class="form-label">Case</label>
+                    <select class="form-select" id="case" name="case">
+                        <option value="">All Cases</option>
+                        {% for case in cases %}
+                            <option value="{{ case.id }}" {% if request.GET.case == case.id|stringformat:"s" %}selected{% endif %}>
+                                {{ case.title }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="sort" class="form-label">Sort By</label>
+                    <select class="form-select" id="sort" name="sort">
+                        <option value="-created_at" {% if request.GET.sort == '-created_at' %}selected{% endif %}>Newest First</option>
+                        <option value="created_at" {% if request.GET.sort == 'created_at' %}selected{% endif %}>Oldest First</option>
+                        <option value="case__title" {% if request.GET.sort == 'case__title' %}selected{% endif %}>Case (A-Z)</option>
+                        <option value="-case__title" {% if request.GET.sort == '-case__title' %}selected{% endif %}>Case (Z-A)</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Case Notes List -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Case</th>
+                            <th>Beneficiary</th>
+                            <th>Content</th>
+                            <th>Created By</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for note in case_notes %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'case_detail' note.case.id %}">{{ note.case.title }}</a>
+                            </td>
+                            <td>
+                                <a href="{% url 'beneficiary_detail' note.case.beneficiary.id %}">{{ note.case.beneficiary.name }}</a>
+                            </td>
+                            <td>{{ note.content|truncatechars:100 }}</td>
+                            <td>{{ note.created_by.username }}</td>
+                            <td>{{ note.created_at|date:"M d, Y" }}</td>
+                            <td>
+                                <a href="{% url 'case_note_detail' note.id %}" class="btn btn-sm btn-info">View</a>
+                                {% if user == note.created_by or user.role == 'admin' %}
+                                <a href="{% url 'case_note_update' note.id %}" class="btn btn-sm btn-warning">Edit</a>
+                                <a href="{% url 'case_note_delete' note.id %}" class="btn btn-sm btn-danger">Delete</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">No case notes found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if is_paginated %}
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="First">
+                            <span aria-hidden="true">&laquo;&laquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Last">
+                            <span aria-hidden="true">&raquo;&raquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
