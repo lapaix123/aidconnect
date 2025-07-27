@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {% if form.instance.id %}Edit Category{% else %}Add Category{% endif %} - AidConnect
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>{% if form.instance.id %}Edit Category{% else %}Add Category{% endif %}</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'category_list' %}">Categories</a></li>
+                    <li class="breadcrumb-item active">{% if form.instance.id %}Edit{% else %}Add{% endif %}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Category Information</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">Category Name</label>
+                            {{ form.name.errors }}
+                            <input type="text" name="{{ form.name.name }}" id="{{ form.name.id_for_label }}" 
+                                   class="form-control {% if form.name.errors %}is-invalid{% endif %}" 
+                                   value="{{ form.name.value|default:'' }}" required>
+                            {% if form.name.help_text %}
+                            <small class="form-text text-muted">{{ form.name.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                            {{ form.description.errors }}
+                            <textarea name="{{ form.description.name }}" id="{{ form.description.id_for_label }}" 
+                                      class="form-control {% if form.description.errors %}is-invalid{% endif %}" 
+                                      rows="4">{{ form.description.value|default:'' }}</textarea>
+                            {% if form.description.help_text %}
+                            <small class="form-text text-muted">{{ form.description.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.max_annual_amount.id_for_label }}" class="form-label">Maximum Annual Amount</label>
+                            {{ form.max_annual_amount.errors }}
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" name="{{ form.max_annual_amount.name }}" id="{{ form.max_annual_amount.id_for_label }}" 
+                                       class="form-control {% if form.max_annual_amount.errors %}is-invalid{% endif %}" 
+                                       value="{{ form.max_annual_amount.value|default:'' }}" step="0.01" required>
+                            </div>
+                            {% if form.max_annual_amount.help_text %}
+                            <small class="form-text text-muted">{{ form.max_annual_amount.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'category_list' %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">
+                                {% if form.instance.id %}Update Category{% else %}Create Category{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Help</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Category Name:</strong> A unique name for the beneficiary category.</p>
+                    <p><strong>Description:</strong> Detailed information about the category, its criteria, and eligibility requirements.</p>
+                    <p><strong>Maximum Annual Amount:</strong> The maximum amount a beneficiary in this category can receive per year across all programs.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

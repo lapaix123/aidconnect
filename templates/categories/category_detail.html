@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ category.name }} - Category Details - AidConnect{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1>{{ category.name }}</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'category_list' %}">Categories</a></li>
+                            <li class="breadcrumb-item active">{{ category.name }}</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div>
+                    {% if user.role == 'admin' or user.role == 'case_manager' %}
+                    <a href="{% url 'category_update' category.id %}" class="btn btn-warning">
+                        <i class="bi bi-pencil"></i> Edit Category
+                    </a>
+                    {% endif %}
+                    {% if user.role == 'admin' %}
+                    <a href="{% url 'category_delete' category.id %}" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Delete Category
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Category Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Category Name:</div>
+                        <div class="col-md-8">{{ category.name }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Maximum Annual Amount:</div>
+                        <div class="col-md-8">${{ category.max_annual_amount }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Description:</div>
+                        <div class="col-md-8">
+                            {% if category.description %}
+                                <p>{{ category.description|linebreaks }}</p>
+                            {% else %}
+                                <span class="text-muted">No description provided</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Beneficiaries in this category -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Beneficiaries in this Category</h5>
+                    <a href="{% url 'beneficiary_list' %}" class="btn btn-sm btn-primary">View All Beneficiaries</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Gender</th>
+                                    <th>Date of Birth</th>
+                                    <th>Program</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for beneficiary in category.beneficiaries.all %}
+                                <tr>
+                                    <td>{{ beneficiary.name }}</td>
+                                    <td>{{ beneficiary.get_gender_display }}</td>
+                                    <td>{{ beneficiary.dob|date:"M d, Y" }}</td>
+                                    <td>
+                                        {% if beneficiary.program %}
+                                            <a href="{% url 'program_detail' beneficiary.program.id %}">{{ beneficiary.program.name }}</a>
+                                        {% else %}
+                                            <span class="text-muted">None</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'beneficiary_detail' beneficiary.id %}" class="btn btn-sm btn-info">
+                                            <i class="bi bi-eye"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center">No beneficiaries in this category.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Category Statistics -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Category Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-6 text-center">
+                            <h3>{{ category.beneficiaries.count }}</h3>
+                            <p class="text-muted">Beneficiaries</p>
+                        </div>
+                        <div class="col-6 text-center">
+                            <h3>${{ category.max_annual_amount|floatformat:2 }}</h3>
+                            <p class="text-muted">Max Annual Amount</p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12 text-center">
+                            <h3>${{ total_annual_disbursement|default:"0.00" }}</h3>
+                            <p class="text-muted">Total Annual Disbursement</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Programs with Beneficiaries in this Category -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Related Programs</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for program in related_programs %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <a href="{% url 'program_detail' program.id %}">{{ program.name }}</a>
+                            <span class="badge bg-primary rounded-pill">{{ program.beneficiaries.count }}</span>
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item text-center">No related programs found.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

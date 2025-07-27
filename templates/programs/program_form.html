@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {% if form.instance.id %}Edit Program{% else %}Add Program{% endif %} - AidConnect
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>{% if form.instance.id %}Edit Program{% else %}Add Program{% endif %}</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'program_list' %}">Programs</a></li>
+                    <li class="breadcrumb-item active">{% if form.instance.id %}Edit{% else %}Add{% endif %}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Program Information</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">Program Name</label>
+                            {{ form.name.errors }}
+                            <input type="text" name="{{ form.name.name }}" id="{{ form.name.id_for_label }}" 
+                                   class="form-control {% if form.name.errors %}is-invalid{% endif %}" 
+                                   value="{{ form.name.value|default:'' }}" required>
+                            {% if form.name.help_text %}
+                            <small class="form-text text-muted">{{ form.name.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                            {{ form.description.errors }}
+                            <textarea name="{{ form.description.name }}" id="{{ form.description.id_for_label }}" 
+                                      class="form-control {% if form.description.errors %}is-invalid{% endif %}" 
+                                      rows="4">{{ form.description.value|default:'' }}</textarea>
+                            {% if form.description.help_text %}
+                            <small class="form-text text-muted">{{ form.description.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.monthly_amount.id_for_label }}" class="form-label">Monthly Amount</label>
+                            {{ form.monthly_amount.errors }}
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" name="{{ form.monthly_amount.name }}" id="{{ form.monthly_amount.id_for_label }}" 
+                                       class="form-control {% if form.monthly_amount.errors %}is-invalid{% endif %}" 
+                                       value="{{ form.monthly_amount.value|default:'' }}" step="0.01" required>
+                            </div>
+                            {% if form.monthly_amount.help_text %}
+                            <small class="form-text text-muted">{{ form.monthly_amount.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.next_program.id_for_label }}" class="form-label">Next Program</label>
+                            {{ form.next_program.errors }}
+                            <select name="{{ form.next_program.name }}" id="{{ form.next_program.id_for_label }}" 
+                                    class="form-select {% if form.next_program.errors %}is-invalid{% endif %}">
+                                <option value="">-- Select Next Program (Optional) --</option>
+                                {% for choice in form.next_program.field.queryset %}
+                                    {% if choice.id != form.instance.id %}  <!-- Don't allow selecting self as next program -->
+                                    <option value="{{ choice.id }}" {% if form.next_program.value|stringformat:"s" == choice.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ choice.name }}
+                                    </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            {% if form.next_program.help_text %}
+                            <small class="form-text text-muted">{{ form.next_program.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'program_list' %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">
+                                {% if form.instance.id %}Update Program{% else %}Create Program{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Help</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Program Name:</strong> A unique name for the program.</p>
+                    <p><strong>Description:</strong> Detailed information about the program, its goals, and eligibility criteria.</p>
+                    <p><strong>Monthly Amount:</strong> The amount a beneficiary receives each month while enrolled in this program.</p>
+                    <p><strong>Next Program:</strong> Optional. The program beneficiaries can be promoted to after completing this one.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

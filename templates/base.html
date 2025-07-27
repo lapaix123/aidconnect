@@ -183,6 +183,16 @@
                                 <i class="bi bi-journal-text"></i> All Case Notes
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if '/programs/' in request.path %}active{% endif %}" href="{% url 'program_list' %}">
+                                <i class="bi bi-award"></i> Programs
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if '/categories/' in request.path %}active{% endif %}" href="{% url 'category_list' %}">
+                                <i class="bi bi-tags"></i> Categories
+                            </a>
+                        </li>
 
                         {% elif user.role == 'case_manager' %}
                         <!-- Case Manager Menu -->
@@ -209,6 +219,16 @@
                         <li class="nav-item">
                             <a class="nav-link {% if '/case-notes/' in request.path %}active{% endif %}" href="{% url 'case_note_list' %}">
                                 <i class="bi bi-journal-text"></i> Case Notes
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if '/programs/' in request.path %}active{% endif %}" href="{% url 'program_list' %}">
+                                <i class="bi bi-award"></i> Programs
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if '/categories/' in request.path %}active{% endif %}" href="{% url 'category_list' %}">
+                                <i class="bi bi-tags"></i> Categories
                             </a>
                         </li>
 

@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ program.name }} - Program Details - AidConnect{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1>{{ program.name }}</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'program_list' %}">Programs</a></li>
+                            <li class="breadcrumb-item active">{{ program.name }}</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div>
+                    {% if user.role == 'admin' or user.role == 'case_manager' %}
+                    <a href="{% url 'program_update' program.id %}" class="btn btn-warning">
+                        <i class="bi bi-pencil"></i> Edit Program
+                    </a>
+                    {% endif %}
+                    {% if user.role == 'admin' %}
+                    <a href="{% url 'program_delete' program.id %}" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Delete Program
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Program Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Program Name:</div>
+                        <div class="col-md-8">{{ program.name }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Monthly Amount:</div>
+                        <div class="col-md-8">${{ program.monthly_amount }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Next Program:</div>
+                        <div class="col-md-8">
+                            {% if program.next_program %}
+                                <a href="{% url 'program_detail' program.next_program.id %}">{{ program.next_program.name }}</a>
+                            {% else %}
+                                <span class="text-muted">None</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Description:</div>
+                        <div class="col-md-8">
+                            {% if program.description %}
+                                <p>{{ program.description|linebreaks }}</p>
+                            {% else %}
+                                <span class="text-muted">No description provided</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Beneficiaries in this program -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Beneficiaries in this Program</h5>
+                    <a href="{% url 'beneficiary_list' %}" class="btn btn-sm btn-primary">View All Beneficiaries</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Gender</th>
+                                    <th>Date of Birth</th>
+                                    <th>Category</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for beneficiary in program.beneficiaries.all %}
+                                <tr>
+                                    <td>{{ beneficiary.name }}</td>
+                                    <td>{{ beneficiary.get_gender_display }}</td>
+                                    <td>{{ beneficiary.dob|date:"M d, Y" }}</td>
+                                    <td>
+                                        {% if beneficiary.category %}
+                                            <a href="{% url 'category_detail' beneficiary.category.id %}">{{ beneficiary.category.name }}</a>
+                                        {% else %}
+                                            <span class="text-muted">None</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'beneficiary_detail' beneficiary.id %}" class="btn btn-sm btn-info">
+                                            <i class="bi bi-eye"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center">No beneficiaries enrolled in this program.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Program Statistics -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Program Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-6 text-center">
+                            <h3>{{ program.beneficiaries.count }}</h3>
+                            <p class="text-muted">Beneficiaries</p>
+                        </div>
+                        <div class="col-6 text-center">
+                            <h3>${{ program.monthly_amount|floatformat:2 }}</h3>
+                            <p class="text-muted">Monthly Amount</p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12 text-center">
+                            <h3>${{ total_monthly_disbursement|default:"0.00" }}</h3>
+                            <p class="text-muted">Total Monthly Disbursement</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Related Programs -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Related Programs</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for related_program in related_programs %}
+                            {% if related_program.id != program.id %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <a href="{% url 'program_detail' related_program.id %}">{{ related_program.name }}</a>
+                                <span class="badge bg-primary rounded-pill">${{ related_program.monthly_amount }}</span>
+                            </li>
+                            {% endif %}
+                        {% empty %}
+                            <li class="list-group-item text-center">No related programs found.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

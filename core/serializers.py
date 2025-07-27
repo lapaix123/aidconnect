@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Beneficiary, Case, CaseNote, Assessment, AssessmentQuestion, AssessmentAnswer
+from .models import User, Beneficiary, Case, CaseNote, Assessment, AssessmentQuestion, AssessmentAnswer,Program, BeneficiaryCategory
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -52,3 +52,12 @@ class CaseSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'beneficiary', 'beneficiary_name', 'case_manager', 'case_manager_name', 
                   'status', 'description', 'opened_date', 'closed_date', 'notes', 'assessments', 
                   'created_at', 'updated_at']
+class ProgramSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Program
+        fields = '__all__'
+
+class BeneficiaryCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BeneficiaryCategory
+        fields = '__all__'

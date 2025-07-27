@@ -8,7 +8,7 @@
 
     <!-- Overview Cards -->
     <div class="row">
-        <div class="col-xl-4 col-md-6">
+        <div class="col-xl-3 col-md-6">
             <div class="card bg-primary text-white">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -26,7 +26,7 @@
             </div>
         </div>
 
-        <div class="col-xl-4 col-md-6">
+        <div class="col-xl-3 col-md-6">
             <div class="card bg-success text-white">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -44,12 +44,12 @@
             </div>
         </div>
 
-        <div class="col-xl-4 col-md-6">
+        <div class="col-xl-3 col-md-6">
             <div class="card bg-warning text-white">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h5 class="card-title">Pending Assessments</h5>
+                            <h5 class="card-title">Assessments</h5>
                             <h2 class="display-4">{{ assessment_count }}</h2>
                         </div>
                         <i class="bi bi-clipboard-data-fill fs-1"></i>
@@ -57,6 +57,42 @@
                 </div>
                 <div class="card-footer d-flex align-items-center justify-content-between">
                     <a href="{% url 'assessment_list' %}" class="text-white">View Details</a>
+                    <i class="bi bi-arrow-right text-white"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Programs</h5>
+                            <h2 class="display-4">{{ program_count }}</h2>
+                        </div>
+                        <i class="bi bi-award-fill fs-1"></i>
+                    </div>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a href="{% url 'program_list' %}" class="text-white">View Details</a>
+                    <i class="bi bi-arrow-right text-white"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mt-4">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Categories</h5>
+                            <h2 class="display-4">{{ category_count }}</h2>
+                        </div>
+                        <i class="bi bi-tags-fill fs-1"></i>
+                    </div>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a href="{% url 'category_list' %}" class="text-white">View Details</a>
                     <i class="bi bi-arrow-right text-white"></i>
                 </div>
             </div>
@@ -156,6 +192,86 @@
         </div>
     </div>
 
+    <!-- Recent Programs -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Programs</h5>
+                    <a href="{% url 'program_list' %}" class="btn btn-primary btn-sm">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Monthly Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for program in recent_programs %}
+                                <tr>
+                                    <td>{{ program.name }}</td>
+                                    <td>${{ program.monthly_amount }}</td>
+                                    <td>
+                                        <a href="{% url 'program_detail' program.id %}" class="btn btn-sm btn-info">View</a>
+                                        <a href="{% url 'program_update' program.id %}" class="btn btn-sm btn-warning">Edit</a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center">No programs found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Categories -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Categories</h5>
+                    <a href="{% url 'category_list' %}" class="btn btn-primary btn-sm">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Max Annual Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for category in recent_categories %}
+                                <tr>
+                                    <td>{{ category.name }}</td>
+                                    <td>${{ category.max_annual_amount }}</td>
+                                    <td>
+                                        <a href="{% url 'category_detail' category.id %}" class="btn btn-sm btn-info">View</a>
+                                        <a href="{% url 'category_update' category.id %}" class="btn btn-sm btn-warning">Edit</a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center">No categories found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Quick Actions -->
     <div class="row mt-4">
         <div class="col-12">
@@ -165,19 +281,36 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <a href="{% url 'beneficiary_create' %}" class="btn btn-success btn-lg w-100 mb-3">
                                 <i class="bi bi-person-plus-fill me-2"></i> Add Beneficiary
                             </a>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <a href="{% url 'case_create' %}" class="btn btn-warning btn-lg w-100 mb-3">
                                 <i class="bi bi-folder-plus me-2"></i> Create Case
                             </a>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <a href="{% url 'case_note_create' %}" class="btn btn-info btn-lg w-100 mb-3">
                                 <i class="bi bi-journal-plus me-2"></i> Add Case Note
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'assessment_create' %}" class="btn btn-danger btn-lg w-100 mb-3">
+                                <i class="bi bi-clipboard-plus me-2"></i> New Assessment
+                            </a>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <a href="{% url 'program_create' %}" class="btn btn-primary btn-lg w-100 mb-3">
+                                <i class="bi bi-award me-2"></i> Create New Program
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{% url 'category_create' %}" class="btn btn-secondary btn-lg w-100 mb-3">
+                                <i class="bi bi-tags me-2"></i> Create New Category
                             </a>
                         </div>
                     </div>
