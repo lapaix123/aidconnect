@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if report.id %}Edit{% else %}Create{% endif %} Report - AidConnect{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{% if report.id %}Edit{% else %}Create{% endif %} Report</h1>
+        <a href="{% if report.id %}{% url 'report_detail' report.id %}{% else %}{% url 'report_list' %}{% endif %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Report Information</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" id="reportForm">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label for="id_name" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="id_name" name="name" value="{{ report.name|default:'' }}" required>
+                    <div class="form-text">A descriptive name for this report.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="id_template" class="form-label">Template</label>
+                    <select class="form-select" id="id_template" name="template" required {% if report.id %}disabled{% endif %}>
+                        <option value="">Select a template</option>
+                        {% for template in form.fields.template.queryset %}
+                        <option value="{{ template.id }}" {% if report.template_id == template.id %}selected{% endif %}>
+                            {{ template.name }} ({{ template.get_entity_type_display }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">The template defines which entity type and fields will be included in the report.</div>
+                    {% if report.id %}
+                    <input type="hidden" name="template" value="{{ report.template_id }}">
+                    <div class="alert alert-info mt-2">
+                        <small>Template cannot be changed after creation. Create a new report if you need to use a different template.</small>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="id_format" class="form-label">Format</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="format" id="format_excel" value="excel" {% if not report.format or report.format == 'excel' %}checked{% endif %}>
+                        <label class="form-check-label" for="format_excel">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Excel (.xlsx)
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="format" id="format_pdf" value="pdf" {% if report.format == 'pdf' %}checked{% endif %}>
+                        <label class="form-check-label" for="format_pdf">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> PDF (.pdf)
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Filters</label>
+                    <div id="filtersContainer" class="border p-3 rounded">
+                        <div class="alert alert-info" id="templatePrompt" {% if report.template_id %}style="display: none;"{% endif %}>
+                            Select a template to see available filters.
+                        </div>
+                        <div id="filterControls" {% if not report.template_id %}style="display: none;"{% endif %}>
+                            <!-- Filter controls will be added here dynamically -->
+                        </div>
+                    </div>
+                    <input type="hidden" id="id_filters" name="filters" value="{{ report.filters|default:'{}' }}">
+                    <div class="form-text">Optional filters to apply to the report data.</div>
+                </div>
+                
+                <div class="d-flex justify-content-end">
+                    <a href="{% if report.id %}{% url 'report_detail' report.id %}{% else %}{% url 'report_list' %}{% endif %}" class="btn btn-secondary me-2">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Save Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Filter options for each entity type
+    const filterOptions = {
+        'beneficiary': [
+            { name: 'category', label: 'Category', type: 'select', url: '/api/categories/' },
+            { name: 'program', label: 'Program', type: 'select', url: '/api/programs/' },
+            { name: 'gender', label: 'Gender', type: 'select', options: [
+                { value: 'male', label: 'Male' },
+                { value: 'female', label: 'Female' },
+                { value: 'other', label: 'Other' }
+            ]}
+        ],
+        'case': [
+            { name: 'status', label: 'Status', type: 'select', options: [
+                { value: 'open', label: 'Open' },
+                { value: 'closed', label: 'Closed' },
+                { value: 'pending', label: 'Pending' }
+            ]},
+            { name: 'case_manager', label: 'Case Manager', type: 'select', url: '/api/users/' }
+        ],
+        'assessment': [
+            { name: 'year', label: 'Year', type: 'number' },
+            { name: 'created_by', label: 'Created By', type: 'select', url: '/api/users/' }
+        ],
+        'case_note': [
+            { name: 'created_by', label: 'Created By', type: 'select', url: '/api/users/' }
+        ],
+        'program': [],
+        'category': []
+    };
+    
+    // Function to update filter controls based on selected template
+    function updateFilterControls() {
+        const templateId = document.getElementById('id_template').value;
+        const filtersContainer = document.getElementById('filterControls');
+        const templatePrompt = document.getElementById('templatePrompt');
+        const filtersInput = document.getElementById('id_filters');
+        
+        // Clear current filters
+        filtersContainer.innerHTML = '';
+        
+        if (!templateId) {
+            templatePrompt.style.display = 'block';
+            filtersContainer.style.display = 'none';
+            return;
+        }
+        
+        // Hide prompt and show filters
+        templatePrompt.style.display = 'none';
+        filtersContainer.style.display = 'block';
+        
+        // Get selected template's entity type
+        const templateOption = document.querySelector(`#id_template option[value="${templateId}"]`);
+        if (!templateOption) return;
+        
+        const entityType = templateOption.textContent.match(/\((.*?)\)/)[1].toLowerCase();
+        
+        // Get current filters (if any)
+        let currentFilters = {};
+        try {
+            currentFilters = JSON.parse(filtersInput.value);
+        } catch (e) {
+            currentFilters = {};
+        }
+        
+        // Create filter controls
+        const filters = filterOptions[entityType] || [];
+        if (filters.length > 0) {
+            filters.forEach(filter => {
+                const filterDiv = document.createElement('div');
+                filterDiv.className = 'mb-3';
+                
+                const label = document.createElement('label');
+                label.className = 'form-label';
+                label.textContent = filter.label;
+                
+                let input;
+                
+                if (filter.type === 'select') {
+                    input = document.createElement('select');
+                    input.className = 'form-select filter-control';
+                    
+                    const emptyOption = document.createElement('option');
+                    emptyOption.value = '';
+                    emptyOption.textContent = `-- Select ${filter.label} --`;
+                    input.appendChild(emptyOption);
+                    
+                    if (filter.options) {
+                        filter.options.forEach(option => {
+                            const optionEl = document.createElement('option');
+                            optionEl.value = option.value;
+                            optionEl.textContent = option.label;
+                            if (currentFilters[filter.name] === option.value) {
+                                optionEl.selected = true;
+                            }
+                            input.appendChild(optionEl);
+                        });
+                    }
+                    
+                    // TODO: If filter has URL, fetch options from API
+                } else {
+                    input = document.createElement('input');
+                    input.type = filter.type;
+                    input.className = 'form-control filter-control';
+                    if (currentFilters[filter.name]) {
+                        input.value = currentFilters[filter.name];
+                    }
+                }
+                
+                input.dataset.filterName = filter.name;
+                
+                filterDiv.appendChild(label);
+                filterDiv.appendChild(input);
+                filtersContainer.appendChild(filterDiv);
+            });
+            
+            // Add event listeners to update hidden input
+            document.querySelectorAll('.filter-control').forEach(control => {
+                control.addEventListener('change', updateFilters);
+            });
+        } else {
+            filtersContainer.innerHTML = '<p class="text-muted">No filters available for this entity type</p>';
+        }
+    }
+    
+    // Function to update the hidden filters input
+    function updateFilters() {
+        const filters = {};
+        document.querySelectorAll('.filter-control').forEach(control => {
+            if (control.value) {
+                filters[control.dataset.filterName] = control.value;
+            }
+        });
+        document.getElementById('id_filters').value = JSON.stringify(filters);
+    }
+    
+    // Initialize form
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set up template change handler
+        document.getElementById('id_template').addEventListener('change', updateFilterControls);
+        
+        // Initialize filter controls
+        updateFilterControls();
+        
+        // Form submission handler
+        document.getElementById('reportForm').addEventListener('submit', function(e) {
+            // Update the filters input one last time
+            updateFilters();
+        });
+    });
+</script>
+{% endblock %}

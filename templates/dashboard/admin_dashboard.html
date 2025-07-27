@@ -131,6 +131,72 @@
         </div>
     </div>
 
+    <!-- Reports Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Reports</h5>
+                    <div>
+                        <a href="{% url 'report_template_list' %}" class="btn btn-outline-primary btn-sm me-2">
+                            <i class="bi bi-file-earmark-text me-1"></i> Report Templates
+                        </a>
+                        <a href="{% url 'report_list' %}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-file-earmark-bar-graph me-1"></i> Saved Reports
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">Export Cases</h5>
+                                    <p class="card-text">Generate a report of all cases with detailed information.</p>
+                                    <div class="d-flex">
+                                        <a href="{% url 'generate_custom_report' %}?entity_type=case&preset=all_cases&format=excel" class="btn btn-success me-2">
+                                            <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                                        </a>
+                                        <a href="{% url 'generate_custom_report' %}?entity_type=case&preset=all_cases&format=pdf" class="btn btn-danger">
+                                            <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">Export Beneficiaries</h5>
+                                    <p class="card-text">Generate a report of all beneficiaries with detailed information.</p>
+                                    <div class="d-flex">
+                                        <a href="{% url 'generate_custom_report' %}?entity_type=beneficiary&preset=all_beneficiaries&format=excel" class="btn btn-success me-2">
+                                            <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                                        </a>
+                                        <a href="{% url 'generate_custom_report' %}?entity_type=beneficiary&preset=all_beneficiaries&format=pdf" class="btn btn-danger">
+                                            <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">Custom Report</h5>
+                                    <p class="card-text">Create a customized report with specific fields and filters.</p>
+                                    <a href="{% url 'generate_custom_report' %}" class="btn btn-primary">
+                                        <i class="bi bi-sliders me-1"></i> Create Custom Report
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Quick Actions -->
     <div class="row mt-4">
         <div class="col-12">

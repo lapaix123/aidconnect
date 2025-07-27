@@ -17,6 +17,8 @@ AidConnect provides a role-based platform for humanitarian organizations to:
 - **Beneficiary Management**: Track personal information and history of services provided
 - **Case Management**: Create and manage cases linked to beneficiaries
 - **Assessment System**: Create, assign, and record structured assessments
+- **Customizable Reports**: Generate and export reports with full details and summary tables
+- **Export Functionality**: Export data to Excel and PDF formats
 - **API Access**: RESTful API with Swagger documentation
 - **Responsive Design**: Works on desktop and mobile devices
 
@@ -63,12 +65,17 @@ AidConnect provides a role-based platform for humanitarian organizations to:
    python manage.py seed_users
    ```
 
-6. Run the development server:
+6. (Optional) Seed dummy data for testing:
+   ```
+   python manage.py seed_dummy_data
+   ```
+
+7. Run the development server:
    ```
    python manage.py runserver
    ```
 
-7. Access the application at http://127.0.0.1:8000/
+8. Access the application at http://127.0.0.1:8000/
 
 ## Default Users
 
@@ -79,6 +86,25 @@ The system comes with three default user accounts:
 | admin | admin123 | Administrator |
 | manager1 | manager123 | Case Manager |
 | officer1 | officer123 | Field Officer |
+
+## Dummy Data
+
+The `seed_dummy_data` command creates the following test data:
+
+### Categories
+- Category 1 (max annual amount: 500,000)
+- Category 2 (max annual amount: 750,000)
+- Category 3 (max annual amount: 1,000,000)
+
+### Programs
+- Girinka (One Cow per Poor Family Program, monthly amount: 50,000)
+- VUP (Vision 2020 Umurenge Program, monthly amount: 30,000)
+- Twiyubake (Self-reliance and economic empowerment program, monthly amount: 40,000)
+
+### Beneficiaries
+- Between 20-30 randomly generated beneficiaries
+- Distributed across the three categories and programs
+- With random names, ages, genders, and addresses
 
 ## User Roles and Permissions
 
@@ -128,7 +154,8 @@ aidconnect/
 ├── core/                  # Main application
 │   ├── management/        # Custom management commands
 │   │   └── commands/      
-│   │       └── seed_users.py  # Command to create default users
+│   │       ├── seed_users.py      # Command to create default users
+│   │       └── seed_dummy_data.py # Command to seed dummy data for testing
 │   ├── migrations/        # Database migrations
 │   ├── models.py          # Data models
 │   ├── serializers.py     # API serializers

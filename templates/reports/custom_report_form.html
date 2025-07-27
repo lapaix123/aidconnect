@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Custom Report - AidConnect{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mt-4 mb-4">Create Custom Report</h1>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Report Configuration</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" id="customReportForm">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label for="entity_type" class="form-label">Entity Type</label>
+                    <select class="form-select" id="entity_type" name="entity_type" required>
+                        <option value="">Select entity type</option>
+                        {% for key, value in entity_types.items %}
+                        <option value="{{ key }}">{{ value }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Fields to Include</label>
+                    <div id="fieldsContainer" class="border p-3 rounded">
+                        <p class="text-muted">Select an entity type to see available fields</p>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Filters</label>
+                    <div id="filtersContainer" class="border p-3 rounded">
+                        <p class="text-muted">Select an entity type to see available filters</p>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Export Format</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="format" id="formatExcel" value="excel" checked>
+                        <label class="form-check-label" for="formatExcel">
+                            Excel (.xlsx)
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="format" id="formatPdf" value="pdf">
+                        <label class="form-check-label" for="formatPdf">
+                            PDF (.pdf)
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'report_list' %}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Generate Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Field options for each entity type
+    const fieldOptions = {{ field_options|safe }};
+    
+    // Filter options for each entity type
+    const filterOptions = {
+        'beneficiary': [
+            { name: 'category', label: 'Category', type: 'select', url: '/api/categories/' },
+            { name: 'program', label: 'Program', type: 'select', url: '/api/programs/' },
+            { name: 'gender', label: 'Gender', type: 'select', options: [
+                { value: 'male', label: 'Male' },
+                { value: 'female', label: 'Female' },
+                { value: 'other', label: 'Other' }
+            ]}
+        ],
+        'case': [
+            { name: 'status', label: 'Status', type: 'select', options: [
+                { value: 'open', label: 'Open' },
+                { value: 'closed', label: 'Closed' },
+                { value: 'pending', label: 'Pending' }
+            ]},
+            { name: 'case_manager', label: 'Case Manager', type: 'select', url: '/api/users/' }
+        ],
+        'assessment': [
+            { name: 'year', label: 'Year', type: 'number' },
+            { name: 'created_by', label: 'Created By', type: 'select', url: '/api/users/' }
+        ],
+        'case_note': [
+            { name: 'created_by', label: 'Created By', type: 'select', url: '/api/users/' }
+        ],
+        'program': [],
+        'category': []
+    };
+    
+    // Update fields when entity type changes
+    document.getElementById('entity_type').addEventListener('change', function() {
+        const entityType = this.value;
+        const fieldsContainer = document.getElementById('fieldsContainer');
+        const filtersContainer = document.getElementById('filtersContainer');
+        
+        // Clear containers
+        fieldsContainer.innerHTML = '';
+        filtersContainer.innerHTML = '';
+        
+        if (!entityType) {
+            fieldsContainer.innerHTML = '<p class="text-muted">Select an entity type to see available fields</p>';
+            filtersContainer.innerHTML = '<p class="text-muted">Select an entity type to see available filters</p>';
+            return;
+        }
+        
+        // Add fields
+        const fields = fieldOptions[entityType] || [];
+        if (fields.length > 0) {
+            const fieldsList = document.createElement('div');
+            fieldsList.className = 'row';
+            
+            fields.forEach(field => {
+                const col = document.createElement('div');
+                col.className = 'col-md-4 mb-2';
+                
+                const checkboxDiv = document.createElement('div');
+                checkboxDiv.className = 'form-check';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'form-check-input';
+                checkbox.name = 'fields';
+                checkbox.value = field;
+                checkbox.id = `field_${field}`;
+                
+                const label = document.createElement('label');
+                label.className = 'form-check-label';
+                label.htmlFor = `field_${field}`;
+                label.textContent = field.replace('__', ' ').replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                
+                checkboxDiv.appendChild(checkbox);
+                checkboxDiv.appendChild(label);
+                col.appendChild(checkboxDiv);
+                fieldsList.appendChild(col);
+            });
+            
+            fieldsContainer.appendChild(fieldsList);
+        } else {
+            fieldsContainer.innerHTML = '<p class="text-muted">No fields available for this entity type</p>';
+        }
+        
+        // Add filters
+        const filters = filterOptions[entityType] || [];
+        if (filters.length > 0) {
+            filters.forEach(filter => {
+                const filterDiv = document.createElement('div');
+                filterDiv.className = 'mb-3';
+                
+                const label = document.createElement('label');
+                label.className = 'form-label';
+                label.textContent = filter.label;
+                
+                let input;
+                
+                if (filter.type === 'select') {
+                    input = document.createElement('select');
+                    input.className = 'form-select';
+                    
+                    const emptyOption = document.createElement('option');
+                    emptyOption.value = '';
+                    emptyOption.textContent = `-- Select ${filter.label} --`;
+                    input.appendChild(emptyOption);
+                    
+                    if (filter.options) {
+                        filter.options.forEach(option => {
+                            const optionEl = document.createElement('option');
+                            optionEl.value = option.value;
+                            optionEl.textContent = option.label;
+                            input.appendChild(optionEl);
+                        });
+                    }
+                    
+                    // TODO: If filter has URL, fetch options from API
+                } else {
+                    input = document.createElement('input');
+                    input.type = filter.type;
+                    input.className = 'form-control';
+                }
+                
+                input.name = `filter_${filter.name}`;
+                input.id = `filter_${filter.name}`;
+                
+                filterDiv.appendChild(label);
+                filterDiv.appendChild(input);
+                filtersContainer.appendChild(filterDiv);
+            });
+        } else {
+            filtersContainer.innerHTML = '<p class="text-muted">No filters available for this entity type</p>';
+        }
+    });
+    
+    // Handle form submission
+    document.getElementById('customReportForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Collect filter values
+        const filters = {};
+        const filterInputs = document.querySelectorAll('[id^="filter_"]');
+        filterInputs.forEach(input => {
+            const name = input.id.replace('filter_', '');
+            if (input.value) {
+                filters[name] = input.value;
+            }
+        });
+        
+        // Add hidden input for filters
+        const filtersInput = document.createElement('input');
+        filtersInput.type = 'hidden';
+        filtersInput.name = 'filters';
+        filtersInput.value = JSON.stringify(filters);
+        this.appendChild(filtersInput);
+        
+        // Submit the form
+        this.submit();
+    });
+</script>
+{% endblock %}

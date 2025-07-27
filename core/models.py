@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
+import json
 
 class User(AbstractUser):
     """Custom user model with role field"""
@@ -125,3 +126,57 @@ class AssessmentAnswer(models.Model):
         return f"Answer to {self.question.text[:30]}..."
 
 
+class ReportTemplate(models.Model):
+    """Template for generating reports"""
+    ENTITY_CHOICES = (
+        ('beneficiary', 'Beneficiaries'),
+        ('case', 'Cases'),
+        ('assessment', 'Assessments'),
+        ('case_note', 'Case Notes'),
+        ('program', 'Programs'),
+        ('category', 'Categories'),
+    )
+
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    entity_type = models.CharField(max_length=20, choices=ENTITY_CHOICES)
+    fields = models.TextField(help_text="JSON array of field names to include in the report")
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='report_templates')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    def get_fields_list(self):
+        """Returns the list of fields from the JSON string"""
+        try:
+            return json.loads(self.fields)
+        except:
+            return []
+
+
+class Report(models.Model):
+    """Saved report configuration"""
+    FORMAT_CHOICES = (
+        ('excel', 'Excel'),
+        ('pdf', 'PDF'),
+    )
+
+    name = models.CharField(max_length=100)
+    template = models.ForeignKey(ReportTemplate, on_delete=models.CASCADE, related_name='reports')
+    filters = models.TextField(blank=True, help_text="JSON object of filters to apply")
+    format = models.CharField(max_length=10, choices=FORMAT_CHOICES, default='excel')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    def get_filters_dict(self):
+        """Returns the filters as a dictionary from the JSON string"""
+        try:
+            return json.loads(self.filters)
+        except:
+            return {}

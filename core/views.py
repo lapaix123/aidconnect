@@ -6,12 +6,24 @@ from django.db.models import Count, Q
 from django.contrib import messages
 from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.http import HttpResponse, JsonResponse
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
-from .models import User, Beneficiary, Case, CaseNote, Assessment, AssessmentQuestion, AssessmentAnswer,Program, BeneficiaryCategory
+import json
+import openpyxl
+from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.utils import get_column_letter
+from xhtml2pdf import pisa
+from io import BytesIO
+from django.template.loader import get_template
+from .models import (
+    User, Beneficiary, Case, CaseNote, Assessment, AssessmentQuestion, 
+    AssessmentAnswer, Program, BeneficiaryCategory, ReportTemplate, Report
+)
 from .serializers import (
     UserSerializer, BeneficiarySerializer, CaseSerializer, CaseNoteSerializer,
-    AssessmentSerializer, AssessmentQuestionSerializer, AssessmentAnswerSerializer,ProgramSerializer, BeneficiaryCategorySerializer
+    AssessmentSerializer, AssessmentQuestionSerializer, AssessmentAnswerSerializer,
+    ProgramSerializer, BeneficiaryCategorySerializer
 )
 
 # Authentication Views
@@ -810,3 +822,355 @@ class BeneficiaryCategoryDeleteView(LoginRequiredMixin, AdminRequiredMixin, Dele
         category = self.get_object()
         messages.success(request, f"Category '{category.name}' deleted successfully.")
         return super().delete(request, *args, **kwargs)
+
+# Report Views
+class ReportTemplateListView(LoginRequiredMixin, ListView):
+    model = ReportTemplate
+    template_name = 'reports/report_template_list.html'
+    context_object_name = 'report_templates'
+
+    def get_queryset(self):
+        # Show only templates created by the user or shared templates
+        return ReportTemplate.objects.filter(created_by=self.request.user)
+
+class ReportTemplateDetailView(LoginRequiredMixin, DetailView):
+    model = ReportTemplate
+    template_name = 'reports/report_template_detail.html'
+    context_object_name = 'report_template'
+
+    def get_queryset(self):
+        # Show only templates created by the user
+        return ReportTemplate.objects.filter(created_by=self.request.user)
+
+class ReportTemplateCreateView(LoginRequiredMixin, CreateView):
+    model = ReportTemplate
+    template_name = 'reports/report_template_form.html'
+    fields = ['name', 'description', 'entity_type', 'fields']
+    success_url = reverse_lazy('report_template_list')
+
+    def form_valid(self, form):
+        form.instance.created_by = self.request.user
+        return super().form_valid(form)
+
+class ReportTemplateUpdateView(LoginRequiredMixin, UpdateView):
+    model = ReportTemplate
+    template_name = 'reports/report_template_form.html'
+    fields = ['name', 'description', 'entity_type', 'fields']
+
+    def get_queryset(self):
+        # Allow editing only templates created by the user
+        return ReportTemplate.objects.filter(created_by=self.request.user)
+
+    def get_success_url(self):
+        return reverse('report_template_detail', kwargs={'pk': self.object.pk})
+
+class ReportTemplateDeleteView(LoginRequiredMixin, DeleteView):
+    model = ReportTemplate
+    template_name = 'reports/report_template_confirm_delete.html'
+    success_url = reverse_lazy('report_template_list')
+
+    def get_queryset(self):
+        # Allow deleting only templates created by the user
+        return ReportTemplate.objects.filter(created_by=self.request.user)
+
+class ReportListView(LoginRequiredMixin, ListView):
+    model = Report
+    template_name = 'reports/report_list.html'
+    context_object_name = 'reports'
+
+    def get_queryset(self):
+        # Show only reports created by the user
+        return Report.objects.filter(created_by=self.request.user)
+
+class ReportDetailView(LoginRequiredMixin, DetailView):
+    model = Report
+    template_name = 'reports/report_detail.html'
+    context_object_name = 'report'
+
+    def get_queryset(self):
+        # Show only reports created by the user
+        return Report.objects.filter(created_by=self.request.user)
+
+class ReportCreateView(LoginRequiredMixin, CreateView):
+    model = Report
+    template_name = 'reports/report_form.html'
+    fields = ['name', 'template', 'filters', 'format']
+    success_url = reverse_lazy('report_list')
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # Limit template choices to those created by the user
+        form.fields['template'].queryset = ReportTemplate.objects.filter(created_by=self.request.user)
+        return form
+
+    def form_valid(self, form):
+        form.instance.created_by = self.request.user
+        return super().form_valid(form)
+
+class ReportUpdateView(LoginRequiredMixin, UpdateView):
+    model = Report
+    template_name = 'reports/report_form.html'
+    fields = ['name', 'template', 'filters', 'format']
+
+    def get_queryset(self):
+        # Allow editing only reports created by the user
+        return Report.objects.filter(created_by=self.request.user)
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # Limit template choices to those created by the user
+        form.fields['template'].queryset = ReportTemplate.objects.filter(created_by=self.request.user)
+        return form
+
+    def get_success_url(self):
+        return reverse('report_detail', kwargs={'pk': self.object.pk})
+
+class ReportDeleteView(LoginRequiredMixin, DeleteView):
+    model = Report
+    template_name = 'reports/report_confirm_delete.html'
+    success_url = reverse_lazy('report_list')
+
+    def get_queryset(self):
+        # Allow deleting only reports created by the user
+        return Report.objects.filter(created_by=self.request.user)
+
+@login_required
+def generate_report(request, pk):
+    """Generate a report based on the saved configuration"""
+    report = get_object_or_404(Report, pk=pk, created_by=request.user)
+    template = report.template
+
+    # Get the data based on the entity type
+    data = get_report_data(request, template.entity_type, report.get_filters_dict())
+
+    # Generate the report in the requested format
+    if report.format == 'excel':
+        return generate_excel_report(request, report, data)
+    else:
+        return generate_pdf_report(request, report, data)
+
+@login_required
+def generate_custom_report(request):
+    """Generate a custom report on the fly"""
+    if request.method == 'POST':
+        entity_type = request.POST.get('entity_type')
+        fields = request.POST.getlist('fields')
+        filters = json.loads(request.POST.get('filters', '{}'))
+        format_type = request.POST.get('format', 'excel')
+
+        # Create a temporary report template
+        temp_template = ReportTemplate(
+            name=f"Custom {entity_type.capitalize()} Report",
+            entity_type=entity_type,
+            fields=json.dumps(fields),
+            created_by=request.user
+        )
+
+        # Get the data based on the entity type
+        data = get_report_data(request, entity_type, filters)
+
+        # Generate the report in the requested format
+        if format_type == 'excel':
+            return generate_excel_report(request, None, data, temp_template)
+        else:
+            return generate_pdf_report(request, None, data, temp_template)
+
+    # If GET request, show the form
+    entity_types = dict(ReportTemplate.ENTITY_CHOICES)
+
+    context = {
+        'entity_types': entity_types,
+        'field_options': get_field_options(),
+    }
+
+    return render(request, 'reports/custom_report_form.html', context)
+
+def get_report_data(request, entity_type, filters=None):
+    """Get the data for a report based on the entity type and filters"""
+    if filters is None:
+        filters = {}
+
+    # Apply role-based restrictions
+    if request.user.role == 'case_manager':
+        if entity_type == 'case':
+            filters['case_manager'] = request.user.id
+        elif entity_type == 'assessment':
+            filters['created_by'] = request.user.id
+        elif entity_type == 'case_note':
+            filters['created_by'] = request.user.id
+    elif request.user.role == 'field_officer':
+        if entity_type == 'assessment':
+            filters['created_by'] = request.user.id
+        elif entity_type == 'case_note':
+            filters['created_by'] = request.user.id
+
+    # Get the data based on the entity type
+    if entity_type == 'beneficiary':
+        queryset = Beneficiary.objects.all()
+    elif entity_type == 'case':
+        queryset = Case.objects.all()
+    elif entity_type == 'assessment':
+        queryset = Assessment.objects.all()
+    elif entity_type == 'case_note':
+        queryset = CaseNote.objects.all()
+    elif entity_type == 'program':
+        queryset = Program.objects.all()
+    elif entity_type == 'category':
+        queryset = BeneficiaryCategory.objects.all()
+    else:
+        queryset = []
+
+    # Apply filters
+    for key, value in filters.items():
+        if value:  # Only apply non-empty filters
+            queryset = queryset.filter(**{key: value})
+
+    return queryset
+
+def get_field_options():
+    """Get available fields for each entity type"""
+    return {
+        'beneficiary': [
+            'id', 'name', 'dob', 'gender', 'address', 'category__name', 
+            'program__name', 'created_at', 'updated_at'
+        ],
+        'case': [
+            'id', 'title', 'beneficiary__name', 'case_manager__username', 
+            'status', 'description', 'opened_date', 'closed_date', 
+            'created_at', 'updated_at'
+        ],
+        'assessment': [
+            'id', 'title', 'case__title', 'case__beneficiary__name', 
+            'created_by__username', 'amount_received', 'year', 
+            'created_at', 'updated_at'
+        ],
+        'case_note': [
+            'id', 'case__title', 'case__beneficiary__name', 
+            'created_by__username', 'content', 'created_at', 'updated_at'
+        ],
+        'program': [
+            'id', 'name', 'description', 'monthly_amount', 
+            'next_program__name'
+        ],
+        'category': [
+            'id', 'name', 'description', 'max_annual_amount'
+        ]
+    }
+
+def generate_excel_report(request, report=None, data=None, template=None):
+    """Generate an Excel report"""
+    if report:
+        template = report.template
+
+    # Create a new workbook and select the active worksheet
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = template.name[:31]  # Excel worksheet names are limited to 31 chars
+
+    # Get the fields to include
+    fields = template.get_fields_list()
+
+    # Add header row
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+    header_alignment = Alignment(horizontal="center", vertical="center")
+
+    for col_idx, field in enumerate(fields, 1):
+        cell = ws.cell(row=1, column=col_idx, value=field.replace('__', ' ').replace('_', ' ').title())
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+
+    # Add data rows
+    for row_idx, item in enumerate(data, 2):
+        for col_idx, field in enumerate(fields, 1):
+            # Handle nested fields (e.g., beneficiary__name)
+            if '__' in field:
+                parts = field.split('__')
+                value = item
+                for part in parts:
+                    if hasattr(value, part):
+                        value = getattr(value, part)
+                    else:
+                        value = None
+                        break
+            else:
+                value = getattr(item, field, None)
+
+            ws.cell(row=row_idx, column=col_idx, value=value)
+
+    # Add summary row
+    summary_row = len(data) + 3
+    ws.cell(row=summary_row, column=1, value="Summary").font = Font(bold=True)
+    ws.cell(row=summary_row, column=2, value=f"Total Records: {len(data)}")
+
+    # Auto-adjust column widths
+    for col_idx, _ in enumerate(fields, 1):
+        col_letter = get_column_letter(col_idx)
+        ws.column_dimensions[col_letter].width = 20
+
+    # Create response
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{template.name}.xlsx"'
+
+    # Save the workbook to the response
+    wb.save(response)
+    return response
+
+def generate_pdf_report(request, report=None, data=None, template=None):
+    """Generate a PDF report"""
+    if report:
+        template = report.template
+
+    # Get the fields to include
+    fields = template.get_fields_list()
+
+    # Prepare data for the template
+    headers = [field.replace('__', ' ').replace('_', ' ').title() for field in fields]
+    rows = []
+
+    for item in data:
+        row = []
+        for field in fields:
+            # Handle nested fields (e.g., beneficiary__name)
+            if '__' in field:
+                parts = field.split('__')
+                value = item
+                for part in parts:
+                    if hasattr(value, part):
+                        value = getattr(value, part)
+                    else:
+                        value = None
+                        break
+            else:
+                value = getattr(item, field, None)
+
+            row.append(value)
+        rows.append(row)
+
+    # Prepare context for the template
+    context = {
+        'title': template.name,
+        'description': template.description,
+        'headers': headers,
+        'rows': rows,
+        'total_records': len(data),
+        'generated_by': request.user.username,
+        'generated_at': timezone.now(),
+    }
+
+    # Render the template
+    html_string = get_template('reports/pdf_report_template.html').render(context)
+
+    # Create PDF
+    result = BytesIO()
+    pdf = pisa.pisaDocument(BytesIO(html_string.encode("UTF-8")), result)
+
+    if not pdf.err:
+        response = HttpResponse(result.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{template.name}.pdf"'
+        return response
+
+    return HttpResponse('Error generating PDF', status=400)

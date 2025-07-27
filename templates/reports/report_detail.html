@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ report.name }} - Report - AidConnect{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Report: {{ report.name }}</h1>
+        <div>
+            <a href="{% url 'generate_report' report.id %}" class="btn btn-success me-2">
+                <i class="bi bi-file-earmark-arrow-down me-1"></i> Generate Report
+            </a>
+            <a href="{% url 'report_list' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Back to Reports
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Report Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6>Name</h6>
+                        <p>{{ report.name }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Template</h6>
+                        <p>
+                            <a href="{% url 'report_template_detail' report.template.id %}">{{ report.template.name }}</a>
+                        </p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Entity Type</h6>
+                        <p>{{ report.template.get_entity_type_display }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Format</h6>
+                        <p>
+                            <span class="badge {% if report.format == 'excel' %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ report.get_format_display }}
+                            </span>
+                        </p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Fields</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Field Name</th>
+                                        <th>Display Name</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for field in report.template.get_fields_list %}
+                                    <tr>
+                                        <td><code>{{ field }}</code></td>
+                                        <td>{{ field|cut:"__"|cut:"_"|title }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="2" class="text-center">No fields defined.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Filters</h6>
+                        {% if report.filters %}
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Filter</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for key, value in report.get_filters_dict.items %}
+                                    <tr>
+                                        <td>{{ key|cut:"__"|cut:"_"|title }}</td>
+                                        <td>{{ value }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted">No filters applied.</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Created</h6>
+                        <p>{{ report.created_at|date:"F j, Y, g:i a" }}</p>
+                    </div>
+                    
+                    <div>
+                        <h6>Last Updated</h6>
+                        <p>{{ report.updated_at|date:"F j, Y, g:i a" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'generate_report' report.id %}" class="btn btn-success">
+                            <i class="bi bi-file-earmark-arrow-down me-1"></i> Generate Report
+                        </a>
+                        <a href="{% url 'report_update' report.id %}" class="btn btn-warning">
+                            <i class="bi bi-pencil me-1"></i> Edit Report
+                        </a>
+                        <a href="{% url 'report_delete' report.id %}" class="btn btn-danger">
+                            <i class="bi bi-trash me-1"></i> Delete Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Preview</h5>
+                </div>
+                <div class="card-body">
+                    <p>Generate this report to see the data based on your current filters.</p>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'generate_report' report.id %}?format=excel" class="btn btn-outline-success">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Excel Preview
+                        </a>
+                        <a href="{% url 'generate_report' report.id %}?format=pdf" class="btn btn-outline-danger">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> PDF Preview
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

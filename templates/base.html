@@ -154,9 +154,28 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#">
+                            <a class="nav-link {% if '/report' in request.path %}active{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#reportsSubmenu" aria-expanded="false">
                                 <i class="bi bi-file-earmark-bar-graph"></i> Reports
                             </a>
+                            <div class="collapse {% if '/report' in request.path %}show{% endif %}" id="reportsSubmenu">
+                                <ul class="nav flex-column ms-3">
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/report-templates/' in request.path %}active{% endif %}" href="{% url 'report_template_list' %}">
+                                            <i class="bi bi-file-earmark-text"></i> Report Templates
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/reports/' in request.path and not '/report-templates/' in request.path %}active{% endif %}" href="{% url 'report_list' %}">
+                                            <i class="bi bi-file-earmark-bar-graph"></i> Saved Reports
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/custom-report/' in request.path %}active{% endif %}" href="{% url 'generate_custom_report' %}">
+                                            <i class="bi bi-sliders"></i> Custom Report
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="/admin/">
@@ -231,6 +250,30 @@
                                 <i class="bi bi-tags"></i> Categories
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if '/report' in request.path %}active{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#cmReportsSubmenu" aria-expanded="false">
+                                <i class="bi bi-file-earmark-bar-graph"></i> Reports
+                            </a>
+                            <div class="collapse {% if '/report' in request.path %}show{% endif %}" id="cmReportsSubmenu">
+                                <ul class="nav flex-column ms-3">
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/report-templates/' in request.path %}active{% endif %}" href="{% url 'report_template_list' %}">
+                                            <i class="bi bi-file-earmark-text"></i> Report Templates
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/reports/' in request.path and not '/report-templates/' in request.path %}active{% endif %}" href="{% url 'report_list' %}">
+                                            <i class="bi bi-file-earmark-bar-graph"></i> Saved Reports
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/custom-report/' in request.path %}active{% endif %}" href="{% url 'generate_custom_report' %}">
+                                            <i class="bi bi-sliders"></i> Custom Report
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
 
                         {% elif user.role == 'field_officer' %}
                         <!-- Field Officer Menu -->
@@ -253,6 +296,30 @@
                             <a class="nav-link {% if '/visits/' in request.path %}active{% endif %}" href="{% url 'visit_list' %}">
                                 <i class="bi bi-journal-text"></i> My Visits
                             </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if '/report' in request.path %}active{% endif %}" href="#" data-bs-toggle="collapse" data-bs-target="#foReportsSubmenu" aria-expanded="false">
+                                <i class="bi bi-file-earmark-bar-graph"></i> Reports
+                            </a>
+                            <div class="collapse {% if '/report' in request.path %}show{% endif %}" id="foReportsSubmenu">
+                                <ul class="nav flex-column ms-3">
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/report-templates/' in request.path %}active{% endif %}" href="{% url 'report_template_list' %}">
+                                            <i class="bi bi-file-earmark-text"></i> Report Templates
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/reports/' in request.path and not '/report-templates/' in request.path %}active{% endif %}" href="{% url 'report_list' %}">
+                                            <i class="bi bi-file-earmark-bar-graph"></i> Saved Reports
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/custom-report/' in request.path %}active{% endif %}" href="{% url 'generate_custom_report' %}">
+                                            <i class="bi bi-sliders"></i> Custom Report
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
                         </li>
                         {% endif %}
 

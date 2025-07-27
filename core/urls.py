@@ -13,6 +13,11 @@ from .views import (
     VisitListView,ProgramViewSet, BeneficiaryCategoryViewSet, ProgramListView, ProgramDetailView, ProgramCreateView, ProgramUpdateView, ProgramDeleteView,
     BeneficiaryCategoryListView, BeneficiaryCategoryDetailView, BeneficiaryCategoryCreateView,
     BeneficiaryCategoryUpdateView, BeneficiaryCategoryDeleteView,
+    # Report views
+    ReportTemplateListView, ReportTemplateDetailView, ReportTemplateCreateView, 
+    ReportTemplateUpdateView, ReportTemplateDeleteView, ReportListView, 
+    ReportDetailView, ReportCreateView, ReportUpdateView, ReportDeleteView,
+    generate_report, generate_custom_report,
 )
 
 # API Router
@@ -87,5 +92,21 @@ urlpatterns = [
     path('categories/<int:pk>/edit/', BeneficiaryCategoryUpdateView.as_view(), name='category_update'),
     path('categories/<int:pk>/delete/', BeneficiaryCategoryDeleteView.as_view(), name='category_delete'),
 
+    # Report Templates
+    path('report-templates/', ReportTemplateListView.as_view(), name='report_template_list'),
+    path('report-templates/add/', ReportTemplateCreateView.as_view(), name='report_template_create'),
+    path('report-templates/<int:pk>/', ReportTemplateDetailView.as_view(), name='report_template_detail'),
+    path('report-templates/<int:pk>/edit/', ReportTemplateUpdateView.as_view(), name='report_template_update'),
+    path('report-templates/<int:pk>/delete/', ReportTemplateDeleteView.as_view(), name='report_template_delete'),
 
+    # Reports
+    path('reports/', ReportListView.as_view(), name='report_list'),
+    path('reports/add/', ReportCreateView.as_view(), name='report_create'),
+    path('reports/<int:pk>/', ReportDetailView.as_view(), name='report_detail'),
+    path('reports/<int:pk>/edit/', ReportUpdateView.as_view(), name='report_update'),
+    path('reports/<int:pk>/delete/', ReportDeleteView.as_view(), name='report_delete'),
+    path('reports/<int:pk>/generate/', generate_report, name='generate_report'),
+
+    # Custom Reports
+    path('custom-report/', generate_custom_report, name='generate_custom_report'),
 ]

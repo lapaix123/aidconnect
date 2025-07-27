@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if report_template.id %}Edit{% else %}Create{% endif %} Report Template - AidConnect{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{% if report_template.id %}Edit{% else %}Create{% endif %} Report Template</h1>
+        <a href="{% url 'report_template_list' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Templates
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Template Information</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" id="reportTemplateForm">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label for="id_name" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="id_name" name="name" value="{{ report_template.name|default:'' }}" required>
+                    <div class="form-text">A descriptive name for this report template.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="id_description" class="form-label">Description</label>
+                    <textarea class="form-control" id="id_description" name="description" rows="3">{{ report_template.description|default:'' }}</textarea>
+                    <div class="form-text">Optional description of what this report template is used for.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="id_entity_type" class="form-label">Entity Type</label>
+                    <select class="form-select" id="id_entity_type" name="entity_type" required {% if report_template.id %}disabled{% endif %}>
+                        <option value="">Select entity type</option>
+                        {% for value, label in form.fields.entity_type.choices %}
+                        <option value="{{ value }}" {% if report_template.entity_type == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">The type of data this report will include.</div>
+                    {% if report_template.id %}
+                    <input type="hidden" name="entity_type" value="{{ report_template.entity_type }}">
+                    <div class="alert alert-info mt-2">
+                        <small>Entity type cannot be changed after creation.</small>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="id_fields" class="form-label">Fields</label>
+                    <div id="fieldsContainer" class="border p-3 rounded">
+                        <div class="alert alert-info" id="entityTypePrompt">
+                            Select an entity type to see available fields.
+                        </div>
+                        <div id="fieldCheckboxes" style="display: none;">
+                            <!-- Field checkboxes will be added here dynamically -->
+                        </div>
+                    </div>
+                    <input type="hidden" id="id_fields" name="fields" value="{{ report_template.fields|default:'[]' }}">
+                    <div class="form-text">Select the fields to include in the report.</div>
+                </div>
+                
+                <div class="d-flex justify-content-end">
+                    <a href="{% url 'report_template_list' %}" class="btn btn-secondary me-2">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Save Template</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Field options for each entity type
+    const fieldOptions = {
+        'beneficiary': [
+            'id', 'name', 'dob', 'gender', 'address', 'category__name', 
+            'program__name', 'created_at', 'updated_at'
+        ],
+        'case': [
+            'id', 'title', 'beneficiary__name', 'case_manager__username', 
+            'status', 'description', 'opened_date', 'closed_date', 
+            'created_at', 'updated_at'
+        ],
+        'assessment': [
+            'id', 'title', 'case__title', 'case__beneficiary__name', 
+            'created_by__username', 'amount_received', 'year', 
+            'created_at', 'updated_at'
+        ],
+        'case_note': [
+            'id', 'case__title', 'case__beneficiary__name', 
+            'created_by__username', 'content', 'created_at', 'updated_at'
+        ],
+        'program': [
+            'id', 'name', 'description', 'monthly_amount', 
+            'next_program__name'
+        ],
+        'category': [
+            'id', 'name', 'description', 'max_annual_amount'
+        ]
+    };
+    
+    // Function to update field checkboxes based on selected entity type
+    function updateFieldCheckboxes() {
+        const entityType = document.getElementById('id_entity_type').value;
+        const fieldsContainer = document.getElementById('fieldCheckboxes');
+        const entityTypePrompt = document.getElementById('entityTypePrompt');
+        const fieldsInput = document.getElementById('id_fields');
+        
+        // Clear current checkboxes
+        fieldsContainer.innerHTML = '';
+        
+        if (!entityType) {
+            entityTypePrompt.style.display = 'block';
+            fieldsContainer.style.display = 'none';
+            return;
+        }
+        
+        // Hide prompt and show checkboxes
+        entityTypePrompt.style.display = 'none';
+        fieldsContainer.style.display = 'block';
+        
+        // Get selected fields (if any)
+        let selectedFields = [];
+        try {
+            selectedFields = JSON.parse(fieldsInput.value);
+        } catch (e) {
+            selectedFields = [];
+        }
+        
+        // Create checkboxes for each field
+        const fields = fieldOptions[entityType] || [];
+        if (fields.length > 0) {
+            const row = document.createElement('div');
+            row.className = 'row';
+            
+            fields.forEach(field => {
+                const col = document.createElement('div');
+                col.className = 'col-md-4 mb-2';
+                
+                const checkboxDiv = document.createElement('div');
+                checkboxDiv.className = 'form-check';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'form-check-input field-checkbox';
+                checkbox.value = field;
+                checkbox.id = `field_${field}`;
+                checkbox.checked = selectedFields.includes(field);
+                
+                const label = document.createElement('label');
+                label.className = 'form-check-label';
+                label.htmlFor = `field_${field}`;
+                label.textContent = field.replace(/__/g, ' ').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                
+                checkboxDiv.appendChild(checkbox);
+                checkboxDiv.appendChild(label);
+                col.appendChild(checkboxDiv);
+                row.appendChild(col);
+            });
+            
+            fieldsContainer.appendChild(row);
+            
+            // Add event listeners to update hidden input
+            document.querySelectorAll('.field-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', updateSelectedFields);
+            });
+        } else {
+            fieldsContainer.innerHTML = '<p class="text-muted">No fields available for this entity type</p>';
+        }
+    }
+    
+    // Function to update the hidden fields input
+    function updateSelectedFields() {
+        const selectedFields = [];
+        document.querySelectorAll('.field-checkbox:checked').forEach(checkbox => {
+            selectedFields.push(checkbox.value);
+        });
+        document.getElementById('id_fields').value = JSON.stringify(selectedFields);
+    }
+    
+    // Initialize form
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set up entity type change handler
+        document.getElementById('id_entity_type').addEventListener('change', updateFieldCheckboxes);
+        
+        // Initialize field checkboxes
+        updateFieldCheckboxes();
+        
+        // Form submission handler
+        document.getElementById('reportTemplateForm').addEventListener('submit', function(e) {
+            // Make sure at least one field is selected
+            const selectedFields = document.querySelectorAll('.field-checkbox:checked');
+            if (selectedFields.length === 0) {
+                e.preventDefault();
+                alert('Please select at least one field for the report.');
+                return false;
+            }
+            
+            // Update the fields input one last time
+            updateSelectedFields();
+        });
+    });
+</script>
+{% endblock %}
