@@ -10,7 +10,9 @@ from .views import (
     CaseListView, CaseDetailView, CaseCreateView, CaseUpdateView, CaseDeleteView,
     AssessmentListView, AssessmentDetailView, AssessmentCreateView, AssessmentUpdateView, AssessmentDeleteView,
     CaseNoteListView, CaseNoteDetailView, CaseNoteCreateView, CaseNoteUpdateView, CaseNoteDeleteView,
-    VisitListView
+    VisitListView,ProgramViewSet, BeneficiaryCategoryViewSet, ProgramListView, ProgramDetailView, ProgramCreateView, ProgramUpdateView, ProgramDeleteView,
+    BeneficiaryCategoryListView, BeneficiaryCategoryDetailView, BeneficiaryCategoryCreateView,
+    BeneficiaryCategoryUpdateView, BeneficiaryCategoryDeleteView,
 )
 
 # API Router
@@ -22,6 +24,9 @@ router.register(r'case-notes', CaseNoteViewSet)
 router.register(r'assessments', AssessmentViewSet)
 router.register(r'assessment-questions', AssessmentQuestionViewSet)
 router.register(r'assessment-answers', AssessmentAnswerViewSet)
+# 👉 New registrations
+router.register(r'programs', ProgramViewSet)
+router.register(r'categories', BeneficiaryCategoryViewSet)
 
 # URL patterns
 urlpatterns = [
@@ -68,4 +73,19 @@ urlpatterns = [
 
     # Visit Management (for Field Officers)
     path('visits/', VisitListView.as_view(), name='visit_list'),
+    # Programs
+    path('programs/', ProgramListView.as_view(), name='program_list'),
+    path('programs/add/', ProgramCreateView.as_view(), name='program_create'),
+    path('programs/<int:pk>/', ProgramDetailView.as_view(), name='program_detail'),
+    path('programs/<int:pk>/edit/', ProgramUpdateView.as_view(), name='program_update'),
+    path('programs/<int:pk>/delete/', ProgramDeleteView.as_view(), name='program_delete'),
+
+    # Categories
+    path('categories/', BeneficiaryCategoryListView.as_view(), name='category_list'),
+    path('categories/add/', BeneficiaryCategoryCreateView.as_view(), name='category_create'),
+    path('categories/<int:pk>/', BeneficiaryCategoryDetailView.as_view(), name='category_detail'),
+    path('categories/<int:pk>/edit/', BeneficiaryCategoryUpdateView.as_view(), name='category_update'),
+    path('categories/<int:pk>/delete/', BeneficiaryCategoryDeleteView.as_view(), name='category_delete'),
+
+
 ]

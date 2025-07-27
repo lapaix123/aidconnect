@@ -8,10 +8,10 @@ from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
-from .models import User, Beneficiary, Case, CaseNote, Assessment, AssessmentQuestion, AssessmentAnswer
+from .models import User, Beneficiary, Case, CaseNote, Assessment, AssessmentQuestion, AssessmentAnswer,Program, BeneficiaryCategory
 from .serializers import (
     UserSerializer, BeneficiarySerializer, CaseSerializer, CaseNoteSerializer,
-    AssessmentSerializer, AssessmentQuestionSerializer, AssessmentAnswerSerializer
+    AssessmentSerializer, AssessmentQuestionSerializer, AssessmentAnswerSerializer,ProgramSerializer, BeneficiaryCategorySerializer
 )
 
 # Authentication Views
@@ -67,6 +67,15 @@ class AssessmentQuestionViewSet(viewsets.ModelViewSet):
 class AssessmentAnswerViewSet(viewsets.ModelViewSet):
     queryset = AssessmentAnswer.objects.all()
     serializer_class = AssessmentAnswerSerializer
+    permission_classes = [IsAuthenticated]
+class ProgramViewSet(viewsets.ModelViewSet):
+    queryset = Program.objects.all()
+    serializer_class = ProgramSerializer
+    permission_classes = [IsAuthenticated]
+
+class BeneficiaryCategoryViewSet(viewsets.ModelViewSet):
+    queryset = BeneficiaryCategory.objects.all()
+    serializer_class = BeneficiaryCategorySerializer
     permission_classes = [IsAuthenticated]
 
 # Custom Mixins
@@ -582,16 +591,26 @@ def admin_dashboard(request):
     beneficiary_count = Beneficiary.objects.count()
     active_case_count = Case.objects.filter(status='open').count()
     assessment_count = Assessment.objects.count()
+    program_count = Program.objects.count()
+    category_count = BeneficiaryCategory.objects.count()
 
     # Get recent cases
     recent_cases = Case.objects.all().order_by('-created_at')[:10]
+
+    # Get recent programs and categories
+    recent_programs = Program.objects.all().order_by('-id')[:5]
+    recent_categories = BeneficiaryCategory.objects.all().order_by('-id')[:5]
 
     context = {
         'user_count': user_count,
         'beneficiary_count': beneficiary_count,
         'active_case_count': active_case_count,
         'assessment_count': assessment_count,
+        'program_count': program_count,
+        'category_count': category_count,
         'recent_cases': recent_cases,
+        'recent_programs': recent_programs,
+        'recent_categories': recent_categories,
     }
 
     return render(request, 'dashboard/admin_dashboard.html', context)
@@ -607,6 +626,8 @@ def case_manager_dashboard(request):
     active_case_count = Case.objects.filter(case_manager=request.user, status='open').count()
     beneficiary_count = Beneficiary.objects.count()
     assessment_count = Assessment.objects.filter(created_by=request.user).count()
+    program_count = Program.objects.count()
+    category_count = BeneficiaryCategory.objects.count()
 
     # Get cases assigned to this case manager
     my_cases = Case.objects.filter(case_manager=request.user).order_by('-created_at')[:10]
@@ -614,12 +635,20 @@ def case_manager_dashboard(request):
     # Get recent case notes by this user
     recent_notes = CaseNote.objects.filter(created_by=request.user).order_by('-created_at')[:10]
 
+    # Get recent programs and categories
+    recent_programs = Program.objects.all().order_by('-id')[:5]
+    recent_categories = BeneficiaryCategory.objects.all().order_by('-id')[:5]
+
     context = {
         'active_case_count': active_case_count,
         'beneficiary_count': beneficiary_count,
         'assessment_count': assessment_count,
+        'program_count': program_count,
+        'category_count': category_count,
         'my_cases': my_cases,
         'recent_notes': recent_notes,
+        'recent_programs': recent_programs,
+        'recent_categories': recent_categories,
     }
 
     return render(request, 'dashboard/case_manager_dashboard.html', context)
@@ -651,3 +680,87 @@ def field_officer_dashboard(request):
     }
 
     return render(request, 'dashboard/field_officer_dashboard.html', context)
+
+# Program Views
+class ProgramListView(LoginRequiredMixin, AnyRoleRequiredMixin, ListView):
+    model = Program
+    template_name = 'programs/program_list.html'
+    context_object_name = 'programs'
+    paginate_by = 10
+
+class ProgramDetailView(LoginRequiredMixin, AnyRoleRequiredMixin, DetailView):
+    model = Program
+    template_name = 'programs/program_detail.html'
+    context_object_name = 'program'
+
+class ProgramCreateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, CreateView):
+    model = Program
+    fields = ['name', 'description', 'monthly_amount', 'next_program']
+    template_name = 'programs/program_form.html'
+    success_url = '/programs/'
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Program '{form.instance.name}' created successfully.")
+        return super().form_valid(form)
+
+class ProgramUpdateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, UpdateView):
+    model = Program
+    fields = ['name', 'description', 'monthly_amount', 'next_program']
+    template_name = 'programs/program_form.html'
+    success_url = '/programs/'
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Program '{form.instance.name}' updated successfully.")
+        return super().form_valid(form)
+
+class ProgramDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+    model = Program
+    template_name = 'programs/program_confirm_delete.html'
+    success_url = '/programs/'
+
+    def delete(self, request, *args, **kwargs):
+        program = self.get_object()
+        messages.success(request, f"Program '{program.name}' deleted successfully.")
+        return super().delete(request, *args, **kwargs)
+
+# BeneficiaryCategory Views
+class BeneficiaryCategoryListView(LoginRequiredMixin, AnyRoleRequiredMixin, ListView):
+    model = BeneficiaryCategory
+    template_name = 'categories/category_list.html'
+    context_object_name = 'categories'
+    paginate_by = 10
+
+class BeneficiaryCategoryDetailView(LoginRequiredMixin, AnyRoleRequiredMixin, DetailView):
+    model = BeneficiaryCategory
+    template_name = 'categories/category_detail.html'
+    context_object_name = 'category'
+
+class BeneficiaryCategoryCreateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, CreateView):
+    model = BeneficiaryCategory
+    fields = ['name', 'description', 'max_annual_amount']
+    template_name = 'categories/category_form.html'
+    success_url = '/categories/'
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Category '{form.instance.name}' created successfully.")
+        return super().form_valid(form)
+
+class BeneficiaryCategoryUpdateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, UpdateView):
+    model = BeneficiaryCategory
+    fields = ['name', 'description', 'max_annual_amount']
+    template_name = 'categories/category_form.html'
+    success_url = '/categories/'
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Category '{form.instance.name}' updated successfully.")
+        return super().form_valid(form)
+
+class BeneficiaryCategoryDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+    model = BeneficiaryCategory
+    template_name = 'categories/category_confirm_delete.html'
+    success_url = '/categories/'
+
+    def delete(self, request, *args, **kwargs):
+        category = self.get_object()
+        messages.success(request, f"Category '{category.name}' deleted successfully.")
+        return super().delete(request, *args, **kwargs)

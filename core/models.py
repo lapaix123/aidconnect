@@ -13,23 +13,35 @@ class User(AbstractUser):
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"
+class Program(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    monthly_amount = models.DecimalField(max_digits=10, decimal_places=2, help_text="Amount a beneficiary receives per month")
+    next_program = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, help_text="Optional: Promote to this program after conditions are met")
+
+    def __str__(self):
+        return self.name
+class BeneficiaryCategory(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    max_annual_amount = models.DecimalField(max_digits=10, decimal_places=2, help_text="Maximum yearly amount a beneficiary in this category can receive")
+
+    def __str__(self):
+        return self.name
 
 class Beneficiary(models.Model):
-    """Beneficiary model with personal information"""
-    GENDER_CHOICES = (
-        ('male', 'Male'),
-        ('female', 'Female'),
-        ('other', 'Other'),
-    )
     name = models.CharField(max_length=100)
-    dob = models.DateField(verbose_name="Date of Birth")
-    gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
+    dob = models.DateField()
+    gender = models.CharField(max_length=10, choices=[('male', 'Male'), ('female', 'Female'), ('other', 'Other')])
     address = models.TextField()
+    category = models.ForeignKey(BeneficiaryCategory, on_delete=models.SET_NULL, null=True, related_name='beneficiaries')
+    program = models.ForeignKey(Program, on_delete=models.SET_NULL, null=True, related_name='beneficiaries')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
+
 
     class Meta:
         verbose_name_plural = "Beneficiaries"
@@ -71,11 +83,14 @@ class Assessment(models.Model):
     description = models.TextField(blank=True)
     case = models.ForeignKey(Case, on_delete=models.CASCADE, related_name='assessments')
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_assessments')
+    amount_received = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Amount received in this assessment")
+    year = models.PositiveIntegerField(default=timezone.now().year)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.title
+
 
 class AssessmentQuestion(models.Model):
     """Question for assessments"""
@@ -108,3 +123,5 @@ class AssessmentAnswer(models.Model):
 
     def __str__(self):
         return f"Answer to {self.question.text[:30]}..."
+
+
