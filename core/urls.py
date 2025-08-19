@@ -4,7 +4,9 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     UserViewSet, BeneficiaryViewSet, CaseViewSet, CaseNoteViewSet,
     AssessmentViewSet, AssessmentQuestionViewSet, AssessmentAnswerViewSet,
+    ReferralViewSet, AlertViewSet,
     dashboard_redirect, admin_dashboard, case_manager_dashboard, field_officer_dashboard,
+    partner_organisation_dashboard, monitoring_and_evaluation_dashboard, program_director_dashboard,
     login_view, BeneficiaryListView, BeneficiaryDetailView, BeneficiaryCreateView,
     BeneficiaryUpdateView, BeneficiaryDeleteView,
     CaseListView, CaseDetailView, CaseCreateView, CaseUpdateView, CaseDeleteView,
@@ -13,6 +15,10 @@ from .views import (
     VisitListView,ProgramViewSet, BeneficiaryCategoryViewSet, ProgramListView, ProgramDetailView, ProgramCreateView, ProgramUpdateView, ProgramDeleteView,
     BeneficiaryCategoryListView, BeneficiaryCategoryDetailView, BeneficiaryCategoryCreateView,
     BeneficiaryCategoryUpdateView, BeneficiaryCategoryDeleteView,
+    # Referral views
+    ReferralListView, ReferralDetailView, ReferralCreateView, ReferralUpdateView, ReferralDeleteView,
+    # Alert views
+    AlertListView, AlertDetailView, AlertDeleteView, mark_all_alerts_read,
     # Report views
     ReportTemplateListView, ReportTemplateDetailView, ReportTemplateCreateView, 
     ReportTemplateUpdateView, ReportTemplateDeleteView, ReportListView, 
@@ -32,6 +38,8 @@ router.register(r'assessment-answers', AssessmentAnswerViewSet)
 # 👉 New registrations
 router.register(r'programs', ProgramViewSet)
 router.register(r'categories', BeneficiaryCategoryViewSet)
+router.register(r'referrals', ReferralViewSet)
+router.register(r'alerts', AlertViewSet)
 
 # URL patterns
 urlpatterns = [
@@ -47,6 +55,9 @@ urlpatterns = [
     path('dashboard/admin/', admin_dashboard, name='admin_dashboard'),
     path('dashboard/case-manager/', case_manager_dashboard, name='case_manager_dashboard'),
     path('dashboard/field-officer/', field_officer_dashboard, name='field_officer_dashboard'),
+    path('dashboard/partner-organisation/', partner_organisation_dashboard, name='partner_organisation_dashboard'),
+    path('dashboard/monitoring-and-evaluation/', monitoring_and_evaluation_dashboard, name='monitoring_and_evaluation_dashboard'),
+    path('dashboard/program-director/', program_director_dashboard, name='program_director_dashboard'),
 
     # Beneficiary Management
     path('beneficiaries/', BeneficiaryListView.as_view(), name='beneficiary_list'),
@@ -109,4 +120,17 @@ urlpatterns = [
 
     # Custom Reports
     path('custom-report/', generate_custom_report, name='generate_custom_report'),
+
+    # Referrals
+    path('referrals/', ReferralListView.as_view(), name='referral_list'),
+    path('referrals/add/', ReferralCreateView.as_view(), name='referral_create'),
+    path('referrals/<int:pk>/', ReferralDetailView.as_view(), name='referral_detail'),
+    path('referrals/<int:pk>/edit/', ReferralUpdateView.as_view(), name='referral_update'),
+    path('referrals/<int:pk>/delete/', ReferralDeleteView.as_view(), name='referral_delete'),
+
+    # Alerts
+    path('alerts/', AlertListView.as_view(), name='alert_list'),
+    path('alerts/<int:pk>/', AlertDetailView.as_view(), name='alert_detail'),
+    path('alerts/<int:pk>/delete/', AlertDeleteView.as_view(), name='alert_delete'),
+    path('alerts/mark-all-read/', mark_all_alerts_read, name='mark_all_alerts_read'),
 ]

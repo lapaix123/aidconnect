@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Beneficiary, Case, CaseNote, Assessment, AssessmentQuestion, AssessmentAnswer,Program, BeneficiaryCategory
+from .models import User, Beneficiary, Case, CaseNote, Assessment, AssessmentQuestion, AssessmentAnswer, Program, BeneficiaryCategory, Referral, Alert
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -61,3 +61,24 @@ class BeneficiaryCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = BeneficiaryCategory
         fields = '__all__'
+
+class ReferralSerializer(serializers.ModelSerializer):
+    beneficiary_name = serializers.ReadOnlyField(source='beneficiary.name')
+    referred_by_name = serializers.ReadOnlyField(source='referred_by.username')
+    referred_to_user_name = serializers.ReadOnlyField(source='referred_to_user.username')
+    case_title = serializers.ReadOnlyField(source='case.title')
+
+    class Meta:
+        model = Referral
+        fields = ['id', 'beneficiary', 'beneficiary_name', 'case', 'case_title', 
+                  'referred_by', 'referred_by_name', 'referred_to_organization', 
+                  'referred_to_user', 'referred_to_user_name', 'reason', 'status', 
+                  'notes', 'created_at', 'updated_at']
+
+class AlertSerializer(serializers.ModelSerializer):
+    user_name = serializers.ReadOnlyField(source='user.username')
+
+    class Meta:
+        model = Alert
+        fields = ['id', 'title', 'message', 'priority', 'user', 'user_name', 
+                  'related_to', 'related_id', 'is_read', 'created_at']

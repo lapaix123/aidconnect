@@ -18,12 +18,13 @@ from io import BytesIO
 from django.template.loader import get_template
 from .models import (
     User, Beneficiary, Case, CaseNote, Assessment, AssessmentQuestion, 
-    AssessmentAnswer, Program, BeneficiaryCategory, ReportTemplate, Report
+    AssessmentAnswer, Program, BeneficiaryCategory, ReportTemplate, Report,
+    Referral, Alert
 )
 from .serializers import (
     UserSerializer, BeneficiarySerializer, CaseSerializer, CaseNoteSerializer,
     AssessmentSerializer, AssessmentQuestionSerializer, AssessmentAnswerSerializer,
-    ProgramSerializer, BeneficiaryCategorySerializer
+    ProgramSerializer, BeneficiaryCategorySerializer, ReferralSerializer, AlertSerializer
 )
 
 # Authentication Views
@@ -90,6 +91,35 @@ class BeneficiaryCategoryViewSet(viewsets.ModelViewSet):
     serializer_class = BeneficiaryCategorySerializer
     permission_classes = [IsAuthenticated]
 
+class ReferralViewSet(viewsets.ModelViewSet):
+    queryset = Referral.objects.all()
+    serializer_class = ReferralSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Filter based on user role
+        if self.request.user.role in ['field_officer', 'case_manager', 'partner_organisation']:
+            queryset = queryset.filter(
+                Q(referred_by=self.request.user) | Q(referred_to_user=self.request.user)
+            )
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(referred_by=self.request.user)
+
+class AlertViewSet(viewsets.ModelViewSet):
+    queryset = Alert.objects.all()
+    serializer_class = AlertSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Show only alerts for the current user
+        return Alert.objects.filter(user=self.request.user).order_by('-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
 # Custom Mixins
 class RoleRequiredMixin(UserPassesTestMixin):
     """Mixin that checks if the user has the required role(s)"""
@@ -106,9 +136,37 @@ class AdminOrCaseManagerRequiredMixin(RoleRequiredMixin):
     """Mixin that checks if the user is an admin or case manager"""
     allowed_roles = ['admin', 'case_manager']
 
+class PartnerOrganisationRequiredMixin(RoleRequiredMixin):
+    """Mixin that checks if the user is from a partner organisation"""
+    allowed_roles = ['partner_organisation']
+
+class MonitoringAndEvaluationRequiredMixin(RoleRequiredMixin):
+    """Mixin that checks if the user is from monitoring and evaluation"""
+    allowed_roles = ['monitoring_and_evaluation']
+
+class ProgramDirectorRequiredMixin(RoleRequiredMixin):
+    """Mixin that checks if the user is a program director"""
+    allowed_roles = ['program_director']
+
+class CanMakeReferralMixin(RoleRequiredMixin):
+    """Mixin that checks if the user can make referrals"""
+    allowed_roles = ['field_officer', 'case_manager', 'partner_organisation']
+
+class CanReceiveAlertsMixin(RoleRequiredMixin):
+    """Mixin that checks if the user can receive alerts"""
+    allowed_roles = ['admin', 'program_director']
+
+class CanGenerateReportsMixin(RoleRequiredMixin):
+    """Mixin that checks if the user can generate reports"""
+    allowed_roles = ['partner_organisation', 'monitoring_and_evaluation', 'program_director']
+
+class CanTrackBeneficiaryProgressMixin(RoleRequiredMixin):
+    """Mixin that checks if the user can track beneficiary progress"""
+    allowed_roles = ['case_manager', 'monitoring_and_evaluation']
+
 class AnyRoleRequiredMixin(RoleRequiredMixin):
     """Mixin that allows any authenticated user with a valid role"""
-    allowed_roles = ['admin', 'case_manager', 'field_officer']
+    allowed_roles = ['admin', 'case_manager', 'field_officer', 'partner_organisation', 'monitoring_and_evaluation', 'program_director']
 
 # Beneficiary Views
 class BeneficiaryListView(LoginRequiredMixin, AnyRoleRequiredMixin, ListView):
@@ -587,6 +645,12 @@ def dashboard_redirect(request):
         return redirect('case_manager_dashboard')
     elif request.user.role == 'field_officer':
         return redirect('field_officer_dashboard')
+    elif request.user.role == 'partner_organisation':
+        return redirect('partner_organisation_dashboard')
+    elif request.user.role == 'monitoring_and_evaluation':
+        return redirect('monitoring_and_evaluation_dashboard')
+    elif request.user.role == 'program_director':
+        return redirect('program_director_dashboard')
     else:
         messages.error(request, "Your account doesn't have a valid role assigned.")
         return redirect('login')
@@ -676,6 +740,7 @@ def field_officer_dashboard(request):
     assessment_count = Assessment.objects.filter(created_by=request.user).count()
     case_note_count = CaseNote.objects.filter(created_by=request.user).count()
     beneficiary_count = Beneficiary.objects.count()
+    referral_count = Referral.objects.filter(referred_by=request.user).count()
 
     # Get recent assessments by this user
     recent_assessments = Assessment.objects.filter(created_by=request.user).order_by('-created_at')[:10]
@@ -683,15 +748,295 @@ def field_officer_dashboard(request):
     # Get recent case notes by this user
     recent_notes = CaseNote.objects.filter(created_by=request.user).order_by('-created_at')[:10]
 
+    # Get recent referrals by this user
+    recent_referrals = Referral.objects.filter(referred_by=request.user).order_by('-created_at')[:10]
+
     context = {
         'assessment_count': assessment_count,
         'case_note_count': case_note_count,
         'beneficiary_count': beneficiary_count,
+        'referral_count': referral_count,
         'recent_assessments': recent_assessments,
         'recent_notes': recent_notes,
+        'recent_referrals': recent_referrals,
     }
 
     return render(request, 'dashboard/field_officer_dashboard.html', context)
+
+
+@login_required
+def partner_organisation_dashboard(request):
+    """Partner organisation dashboard view"""
+    if request.user.role != 'partner_organisation':
+        messages.error(request, "You don't have permission to access the partner organisation dashboard.")
+        return redirect('dashboard_redirect')
+
+    # Get counts for dashboard cards
+    referral_count = Referral.objects.filter(referred_by=request.user).count()
+    received_referral_count = Referral.objects.filter(referred_to_user=request.user).count()
+    report_count = Report.objects.filter(created_by=request.user).count()
+    beneficiary_count = Beneficiary.objects.count()
+
+    # Get recent referrals by this user
+    recent_referrals = Referral.objects.filter(referred_by=request.user).order_by('-created_at')[:10]
+
+    # Get recent referrals to this user
+    recent_received_referrals = Referral.objects.filter(referred_to_user=request.user).order_by('-created_at')[:10]
+
+    # Get recent reports by this user
+    recent_reports = Report.objects.filter(created_by=request.user).order_by('-created_at')[:10]
+
+    context = {
+        'referral_count': referral_count,
+        'received_referral_count': received_referral_count,
+        'report_count': report_count,
+        'beneficiary_count': beneficiary_count,
+        'recent_referrals': recent_referrals,
+        'recent_received_referrals': recent_received_referrals,
+        'recent_reports': recent_reports,
+    }
+
+    return render(request, 'dashboard/partner_organisation_dashboard.html', context)
+
+
+@login_required
+def monitoring_and_evaluation_dashboard(request):
+    """Monitoring and evaluation dashboard view"""
+    if request.user.role != 'monitoring_and_evaluation':
+        messages.error(request, "You don't have permission to access the monitoring and evaluation dashboard.")
+        return redirect('dashboard_redirect')
+
+    # Get counts for dashboard cards
+    beneficiary_count = Beneficiary.objects.count()
+    case_count = Case.objects.count()
+    assessment_count = Assessment.objects.count()
+    report_count = Report.objects.filter(created_by=request.user).count()
+
+    # Get recent cases
+    recent_cases = Case.objects.all().order_by('-created_at')[:10]
+
+    # Get recent assessments
+    recent_assessments = Assessment.objects.all().order_by('-created_at')[:10]
+
+    # Get recent reports by this user
+    recent_reports = Report.objects.filter(created_by=request.user).order_by('-created_at')[:10]
+
+    context = {
+        'beneficiary_count': beneficiary_count,
+        'case_count': case_count,
+        'assessment_count': assessment_count,
+        'report_count': report_count,
+        'recent_cases': recent_cases,
+        'recent_assessments': recent_assessments,
+        'recent_reports': recent_reports,
+    }
+
+    return render(request, 'dashboard/monitoring_and_evaluation_dashboard.html', context)
+
+
+@login_required
+def program_director_dashboard(request):
+    """Program director dashboard view"""
+    if request.user.role != 'program_director':
+        messages.error(request, "You don't have permission to access the program director dashboard.")
+        return redirect('dashboard_redirect')
+
+    # Get counts for dashboard cards
+    beneficiary_count = Beneficiary.objects.count()
+    program_count = Program.objects.count()
+    case_count = Case.objects.count()
+    report_count = Report.objects.filter(created_by=request.user).count()
+    alert_count = Alert.objects.filter(user=request.user, is_read=False).count()
+
+    # Get recent programs
+    recent_programs = Program.objects.all().order_by('-id')[:10]
+
+    # Get recent reports by this user
+    recent_reports = Report.objects.filter(created_by=request.user).order_by('-created_at')[:10]
+
+    # Get unread alerts for this user
+    unread_alerts = Alert.objects.filter(user=request.user, is_read=False).order_by('-created_at')[:10]
+
+    context = {
+        'beneficiary_count': beneficiary_count,
+        'program_count': program_count,
+        'case_count': case_count,
+        'report_count': report_count,
+        'alert_count': alert_count,
+        'recent_programs': recent_programs,
+        'recent_reports': recent_reports,
+        'unread_alerts': unread_alerts,
+    }
+
+    return render(request, 'dashboard/program_director_dashboard.html', context)
+
+# Referral Views
+class ReferralListView(LoginRequiredMixin, AnyRoleRequiredMixin, ListView):
+    model = Referral
+    template_name = 'referrals/referral_list.html'
+    context_object_name = 'referrals'
+    paginate_by = 10
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Filter referrals based on user role
+        if self.request.user.role in ['field_officer', 'case_manager', 'partner_organisation']:
+            # These roles can see referrals they made
+            queryset = queryset.filter(
+                Q(referred_by=self.request.user) | Q(referred_to_user=self.request.user)
+            )
+        elif self.request.user.role == 'monitoring_and_evaluation':
+            # M&E can see all referrals for tracking
+            pass
+        elif self.request.user.role == 'program_director':
+            # Program directors can see all referrals
+            pass
+
+        # Apply search filter
+        search_query = self.request.GET.get('search', '')
+        if search_query:
+            queryset = queryset.filter(
+                Q(beneficiary__name__icontains=search_query) | 
+                Q(referred_to_organization__icontains=search_query) |
+                Q(reason__icontains=search_query)
+            )
+
+        # Apply status filter
+        status = self.request.GET.get('status', '')
+        if status:
+            queryset = queryset.filter(status=status)
+
+        # Apply sorting
+        sort = self.request.GET.get('sort', '-created_at')
+        queryset = queryset.order_by(sort)
+
+        return queryset
+
+class ReferralDetailView(LoginRequiredMixin, AnyRoleRequiredMixin, DetailView):
+    model = Referral
+    template_name = 'referrals/referral_detail.html'
+    context_object_name = 'referral'
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Filter based on user role
+        if self.request.user.role in ['field_officer', 'case_manager', 'partner_organisation']:
+            queryset = queryset.filter(
+                Q(referred_by=self.request.user) | Q(referred_to_user=self.request.user)
+            )
+        return queryset
+
+class ReferralCreateView(LoginRequiredMixin, CanMakeReferralMixin, CreateView):
+    model = Referral
+    template_name = 'referrals/referral_form.html'
+    fields = ['beneficiary', 'case', 'referred_to_organization', 'referred_to_user', 'reason', 'notes']
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # Limit case choices based on user role
+        if self.request.user.role == 'case_manager':
+            form.fields['case'].queryset = Case.objects.filter(case_manager=self.request.user)
+        elif self.request.user.role == 'field_officer':
+            # Field officers can see all cases to create referrals
+            form.fields['case'].queryset = Case.objects.all()
+
+        # Limit referred_to_user choices to partner organisations and case managers
+        form.fields['referred_to_user'].queryset = User.objects.filter(
+            role__in=['partner_organisation', 'case_manager']
+        )
+        return form
+
+    def form_valid(self, form):
+        # Set the referrer to the current user
+        form.instance.referred_by = self.request.user
+        messages.success(self.request, f"Referral for {form.instance.beneficiary.name} created successfully.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('referral_detail', kwargs={'pk': self.object.pk})
+
+class ReferralUpdateView(LoginRequiredMixin, AnyRoleRequiredMixin, UpdateView):
+    model = Referral
+    template_name = 'referrals/referral_form.html'
+    fields = ['status', 'notes']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Users can only update referrals they made or received
+        queryset = queryset.filter(
+            Q(referred_by=self.request.user) | Q(referred_to_user=self.request.user)
+        )
+        return queryset
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Referral for {form.instance.beneficiary.name} updated successfully.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('referral_detail', kwargs={'pk': self.object.pk})
+
+class ReferralDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+    model = Referral
+    template_name = 'referrals/referral_confirm_delete.html'
+    context_object_name = 'referral'
+    success_url = reverse_lazy('referral_list')
+
+    def delete(self, request, *args, **kwargs):
+        referral = self.get_object()
+        messages.success(request, f"Referral for {referral.beneficiary.name} deleted successfully.")
+        return super().delete(request, *args, **kwargs)
+
+# Alert Views
+class AlertListView(LoginRequiredMixin, CanReceiveAlertsMixin, ListView):
+    model = Alert
+    template_name = 'alerts/alert_list.html'
+    context_object_name = 'alerts'
+    paginate_by = 10
+
+    def get_queryset(self):
+        # Show only alerts for the current user
+        return Alert.objects.filter(user=self.request.user).order_by('-created_at')
+
+class AlertDetailView(LoginRequiredMixin, CanReceiveAlertsMixin, DetailView):
+    model = Alert
+    template_name = 'alerts/alert_detail.html'
+    context_object_name = 'alert'
+
+    def get_queryset(self):
+        # Show only alerts for the current user
+        return Alert.objects.filter(user=self.request.user)
+
+    def get(self, request, *args, **kwargs):
+        # Mark the alert as read when viewed
+        response = super().get(request, *args, **kwargs)
+        alert = self.object
+        if not alert.is_read:
+            alert.is_read = True
+            alert.save()
+        return response
+
+class AlertDeleteView(LoginRequiredMixin, CanReceiveAlertsMixin, DeleteView):
+    model = Alert
+    template_name = 'alerts/alert_confirm_delete.html'
+    context_object_name = 'alert'
+    success_url = reverse_lazy('alert_list')
+
+    def get_queryset(self):
+        # Users can only delete their own alerts
+        return Alert.objects.filter(user=self.request.user)
+
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, "Alert deleted successfully.")
+        return super().delete(request, *args, **kwargs)
+
+@login_required
+def mark_all_alerts_read(request):
+    """Mark all alerts for the current user as read"""
+    if request.method == 'POST':
+        Alert.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        messages.success(request, "All alerts marked as read.")
+    return redirect('alert_list')
 
 # Program Views
 class ProgramListView(LoginRequiredMixin, AnyRoleRequiredMixin, ListView):

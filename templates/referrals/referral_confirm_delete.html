@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Referral - AidConnect{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Confirm Deletion</h5>
+                </div>
+                <div class="card-body">
+                    <h4 class="mb-4">Are you sure you want to delete this referral?</h4>
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        This action cannot be undone. All information related to this referral will be permanently deleted.
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0">Referral Details</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-2">
+                                <div class="col-md-4 fw-bold">Beneficiary:</div>
+                                <div class="col-md-8">{{ referral.beneficiary.name }}</div>
+                            </div>
+                            {% if referral.case %}
+                            <div class="row mb-2">
+                                <div class="col-md-4 fw-bold">Case:</div>
+                                <div class="col-md-8">{{ referral.case.title }}</div>
+                            </div>
+                            {% endif %}
+                            <div class="row mb-2">
+                                <div class="col-md-4 fw-bold">Referred By:</div>
+                                <div class="col-md-8">{{ referral.referred_by.get_full_name|default:referral.referred_by.username }}</div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-4 fw-bold">Referred To:</div>
+                                <div class="col-md-8">{{ referral.referred_to_organization }}</div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-4 fw-bold">Status:</div>
+                                <div class="col-md-8">
+                                    <span class="badge {% if referral.status == 'pending' %}bg-warning{% elif referral.status == 'accepted' %}bg-success{% elif referral.status == 'rejected' %}bg-danger{% else %}bg-info{% endif %}">
+                                        {{ referral.get_status_display }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-4 fw-bold">Created:</div>
+                                <div class="col-md-8">{{ referral.created_at|date:"F d, Y" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-end">
+                            <a href="{% url 'referral_detail' referral.id %}" class="btn btn-outline-secondary me-2">
+                                <i class="bi bi-x-circle me-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash me-1"></i>Delete Referral
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+{% endblock %}

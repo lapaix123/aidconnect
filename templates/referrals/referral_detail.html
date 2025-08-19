@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+
+{% block title %}Referral Details - AidConnect{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Referral Details</h1>
+        <div>
+            <a href="{% url 'referral_list' %}" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-arrow-left me-1"></i>Back to List
+            </a>
+            {% if request.user == referral.referred_by or request.user == referral.referred_to_user %}
+            <a href="{% url 'referral_update' referral.id %}" class="btn btn-warning">
+                <i class="bi bi-pencil me-1"></i>Update Status
+            </a>
+            {% endif %}
+            {% if request.user.role == 'admin' %}
+            <a href="{% url 'referral_delete' referral.id %}" class="btn btn-danger">
+                <i class="bi bi-trash me-1"></i>Delete
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Referral Information -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Referral Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Status:</div>
+                        <div class="col-md-8">
+                            <span class="badge {% if referral.status == 'pending' %}bg-warning{% elif referral.status == 'accepted' %}bg-success{% elif referral.status == 'rejected' %}bg-danger{% else %}bg-info{% endif %} fs-6">
+                                {{ referral.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Beneficiary:</div>
+                        <div class="col-md-8">
+                            <a href="{% url 'beneficiary_detail' referral.beneficiary.id %}">{{ referral.beneficiary.name }}</a>
+                        </div>
+                    </div>
+                    {% if referral.case %}
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Case:</div>
+                        <div class="col-md-8">
+                            <a href="{% url 'case_detail' referral.case.id %}">{{ referral.case.title }}</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Referred By:</div>
+                        <div class="col-md-8">
+                            {{ referral.referred_by.get_full_name|default:referral.referred_by.username }} ({{ referral.referred_by.get_role_display }})
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Referred To Organization:</div>
+                        <div class="col-md-8">
+                            {{ referral.referred_to_organization }}
+                        </div>
+                    </div>
+                    {% if referral.referred_to_user %}
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Referred To User:</div>
+                        <div class="col-md-8">
+                            {{ referral.referred_to_user.get_full_name|default:referral.referred_to_user.username }} ({{ referral.referred_to_user.get_role_display }})
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Created:</div>
+                        <div class="col-md-8">
+                            {{ referral.created_at|date:"F d, Y H:i" }}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Last Updated:</div>
+                        <div class="col-md-8">
+                            {{ referral.updated_at|date:"F d, Y H:i" }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Reason for Referral</h5>
+                </div>
+                <div class="card-body">
+                    <p>{{ referral.reason|linebreaks }}</p>
+                </div>
+            </div>
+
+            {% if referral.notes %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Additional Notes</h5>
+                </div>
+                <div class="card-body">
+                    <p>{{ referral.notes|linebreaks }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Beneficiary Information -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Beneficiary Information</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Name:</div>
+                        <div class="col-md-8">{{ referral.beneficiary.name }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Gender:</div>
+                        <div class="col-md-8">{{ referral.beneficiary.get_gender_display }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Date of Birth:</div>
+                        <div class="col-md-8">{{ referral.beneficiary.dob|date:"F d, Y" }}</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Address:</div>
+                        <div class="col-md-8">{{ referral.beneficiary.address }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Category:</div>
+                        <div class="col-md-8">{% if referral.beneficiary.category %}{{ referral.beneficiary.category.name }}{% else %}Not assigned{% endif %}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Program:</div>
+                        <div class="col-md-8">{% if referral.beneficiary.program %}{{ referral.beneficiary.program.name }}{% else %}Not assigned{% endif %}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="text-end">
+                <a href="{% url 'beneficiary_detail' referral.beneficiary.id %}" class="btn btn-outline-primary">
+                    <i class="bi bi-person me-1"></i>View Full Beneficiary Profile
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Update History -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Status Update History</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">This feature will track status changes in the future.</p>
+            
+            {% if request.user == referral.referred_by or request.user == referral.referred_to_user %}
+            <div class="mt-3">
+                <a href="{% url 'referral_update' referral.id %}" class="btn btn-warning">
+                    <i class="bi bi-pencil me-1"></i>Update Status
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+{% endblock %}

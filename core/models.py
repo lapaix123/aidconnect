@@ -9,8 +9,11 @@ class User(AbstractUser):
         ('admin', 'Admin'),
         ('case_manager', 'Case Manager'),
         ('field_officer', 'Field Officer'),
+        ('partner_organisation', 'Partner Organisation'),
+        ('monitoring_and_evaluation', 'Monitoring and Evaluation'),
+        ('program_director', 'Program Director'),
     )
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='field_officer')
+    role = models.CharField(max_length=30, choices=ROLE_CHOICES, default='field_officer')
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"
@@ -180,3 +183,52 @@ class Report(models.Model):
             return json.loads(self.filters)
         except:
             return {}
+
+
+class Referral(models.Model):
+    """Referral model for tracking referrals between organizations"""
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+        ('completed', 'Completed'),
+    )
+
+    beneficiary = models.ForeignKey(Beneficiary, on_delete=models.CASCADE, related_name='referrals')
+    case = models.ForeignKey(Case, on_delete=models.CASCADE, related_name='referrals', null=True, blank=True)
+    referred_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='referrals_made')
+    referred_to_organization = models.CharField(max_length=100)
+    referred_to_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='referrals_received')
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Referral for {self.beneficiary.name} to {self.referred_to_organization}"
+
+
+class Alert(models.Model):
+    """Alert model for system notifications and alerts"""
+    PRIORITY_CHOICES = (
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('critical', 'Critical'),
+    )
+
+    title = models.CharField(max_length=100)
+    message = models.TextField()
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='alerts')
+    related_to = models.CharField(max_length=50, blank=True, help_text="Type of entity this alert is related to (e.g., case, beneficiary)")
+    related_id = models.PositiveIntegerField(null=True, blank=True, help_text="ID of the related entity")
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        ordering = ['-created_at']
