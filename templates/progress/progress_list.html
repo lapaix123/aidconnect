@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block title %}Beneficiary Progress{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Beneficiary Progress</h1>
+        {% if user.role == 'admin' or user.role == 'case_manager' or user.role == 'monitoring_and_evaluation' %}
+        <a href="{% url 'beneficiary_progress_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Record Progress
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Filter Progress Records</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="search" class="form-label">Search</label>
+                    <input type="text" class="form-control" id="search" name="search" value="{{ request.GET.search }}" placeholder="Search by beneficiary, notes, etc.">
+                </div>
+                <div class="col-md-4">
+                    <label for="beneficiary" class="form-label">Beneficiary</label>
+                    <select class="form-select" id="beneficiary" name="beneficiary">
+                        <option value="">All Beneficiaries</option>
+                        {% for beneficiary in beneficiaries %}
+                        <option value="{{ beneficiary.id }}" {% if request.GET.beneficiary == beneficiary.id|stringformat:"s" %}selected{% endif %}>{{ beneficiary.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="case" class="form-label">Case</label>
+                    <select class="form-select" id="case" name="case">
+                        <option value="">All Cases</option>
+                        {% for case in cases %}
+                        <option value="{{ case.id }}" {% if request.GET.case == case.id|stringformat:"s" %}selected{% endif %}>{{ case.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="action_plan" class="form-label">Action Plan</label>
+                    <select class="form-select" id="action_plan" name="action_plan">
+                        <option value="">All Action Plans</option>
+                        {% for action_plan in action_plans %}
+                        <option value="{{ action_plan.id }}" {% if request.GET.action_plan == action_plan.id|stringformat:"s" %}selected{% endif %}>{{ action_plan.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">All Statuses</option>
+                        <option value="on_track" {% if request.GET.status == 'on_track' %}selected{% endif %}>On Track</option>
+                        <option value="behind" {% if request.GET.status == 'behind' %}selected{% endif %}>Behind Schedule</option>
+                        <option value="ahead" {% if request.GET.status == 'ahead' %}selected{% endif %}>Ahead of Schedule</option>
+                        <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>Completed</option>
+                        <option value="not_started" {% if request.GET.status == 'not_started' %}selected{% endif %}>Not Started</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="sort" class="form-label">Sort By</label>
+                    <select class="form-select" id="sort" name="sort">
+                        <option value="-date" {% if request.GET.sort == '-date' %}selected{% endif %}>Newest First</option>
+                        <option value="date" {% if request.GET.sort == 'date' %}selected{% endif %}>Oldest First</option>
+                        <option value="progress_percentage" {% if request.GET.sort == 'progress_percentage' %}selected{% endif %}>Progress (Low to High)</option>
+                        <option value="-progress_percentage" {% if request.GET.sort == '-progress_percentage' %}selected{% endif %}>Progress (High to Low)</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Apply Filters</button>
+                    <a href="{% url 'beneficiary_progress_list' %}" class="btn btn-secondary">Clear Filters</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if progress_records %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Date</th>
+                    <th>Beneficiary</th>
+                    <th>Case</th>
+                    <th>Action Plan</th>
+                    <th>Status</th>
+                    <th>Progress</th>
+                    <th>Recorded By</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for progress in progress_records %}
+                <tr>
+                    <td>{{ progress.date|date:"M d, Y" }}</td>
+                    <td><a href="{% url 'beneficiary_detail' progress.beneficiary.id %}">{{ progress.beneficiary.name }}</a></td>
+                    <td>
+                        {% if progress.case %}
+                        <a href="{% url 'case_detail' progress.case.id %}">{{ progress.case.title }}</a>
+                        {% else %}
+                        <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if progress.action_plan %}
+                        <a href="{% url 'action_plan_detail' progress.action_plan.id %}">{{ progress.action_plan.title }}</a>
+                        {% else %}
+                        <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if progress.status == 'on_track' %}
+                        <span class="badge bg-success">On Track</span>
+                        {% elif progress.status == 'behind' %}
+                        <span class="badge bg-warning">Behind Schedule</span>
+                        {% elif progress.status == 'ahead' %}
+                        <span class="badge bg-info">Ahead of Schedule</span>
+                        {% elif progress.status == 'completed' %}
+                        <span class="badge bg-primary">Completed</span>
+                        {% elif progress.status == 'not_started' %}
+                        <span class="badge bg-secondary">Not Started</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" style="width: {{ progress.progress_percentage }}%;" aria-valuenow="{{ progress.progress_percentage }}" aria-valuemin="0" aria-valuemax="100">{{ progress.progress_percentage }}%</div>
+                        </div>
+                    </td>
+                    <td>{{ progress.recorded_by.username }}</td>
+                    <td>
+                        <div class="btn-group" role="group">
+                            <a href="{% url 'beneficiary_progress_detail' progress.id %}" class="btn btn-sm btn-info">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            {% if user.role == 'admin' or user.role == 'case_manager' or user.role == 'monitoring_and_evaluation' %}
+                            <a href="{% url 'beneficiary_progress_update' progress.id %}" class="btn btn-sm btn-warning">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {% endif %}
+                            {% if user.role == 'admin' %}
+                            <a href="{% url 'beneficiary_progress_delete' progress.id %}" class="btn btn-sm btn-danger">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include 'pagination.html' with page_obj=page_obj %}
+    
+    {% else %}
+    <div class="alert alert-info">
+        No progress records found. {% if user.role == 'admin' or user.role == 'case_manager' or user.role == 'monitoring_and_evaluation' %}<a href="{% url 'beneficiary_progress_create' %}">Record progress</a>{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

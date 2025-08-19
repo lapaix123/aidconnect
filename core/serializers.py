@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Beneficiary, Case, CaseNote, Assessment, AssessmentQuestion, AssessmentAnswer, Program, BeneficiaryCategory, Referral, Alert
+from .models import User, Beneficiary, Case, CaseNote, Assessment, AssessmentQuestion, AssessmentAnswer, Program, BeneficiaryCategory, Referral, Alert, ActionPlan, BeneficiaryProgress
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -82,3 +82,39 @@ class AlertSerializer(serializers.ModelSerializer):
         model = Alert
         fields = ['id', 'title', 'message', 'priority', 'user', 'user_name', 
                   'related_to', 'related_id', 'is_read', 'created_at']
+
+
+class ActionPlanSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.ReadOnlyField(source='created_by.username')
+    case_title = serializers.ReadOnlyField(source='case.title')
+    beneficiary_name = serializers.ReadOnlyField(source='case.beneficiary.name')
+
+    class Meta:
+        model = ActionPlan
+        fields = ['id', 'title', 'case', 'case_title', 'created_by', 'created_by_name',
+                  'description', 'goals', 'timeline', 'status', 'beneficiary_name',
+                  'created_at', 'updated_at']
+
+
+class BeneficiaryProgressSerializer(serializers.ModelSerializer):
+    recorded_by_name = serializers.ReadOnlyField(source='recorded_by.username')
+    beneficiary_name = serializers.ReadOnlyField(source='beneficiary.name')
+    case_title = serializers.SerializerMethodField()
+    action_plan_title = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BeneficiaryProgress
+        fields = ['id', 'beneficiary', 'beneficiary_name', 'case', 'case_title',
+                  'action_plan', 'action_plan_title', 'recorded_by', 'recorded_by_name',
+                  'date', 'status', 'progress_percentage', 'notes',
+                  'created_at', 'updated_at']
+
+    def get_case_title(self, obj):
+        if obj.case:
+            return obj.case.title
+        return None
+
+    def get_action_plan_title(self, obj):
+        if obj.action_plan:
+            return obj.action_plan.title
+        return None

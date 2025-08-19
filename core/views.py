@@ -19,12 +19,13 @@ from django.template.loader import get_template
 from .models import (
     User, Beneficiary, Case, CaseNote, Assessment, AssessmentQuestion, 
     AssessmentAnswer, Program, BeneficiaryCategory, ReportTemplate, Report,
-    Referral, Alert
+    Referral, Alert, ActionPlan, BeneficiaryProgress
 )
 from .serializers import (
     UserSerializer, BeneficiarySerializer, CaseSerializer, CaseNoteSerializer,
     AssessmentSerializer, AssessmentQuestionSerializer, AssessmentAnswerSerializer,
-    ProgramSerializer, BeneficiaryCategorySerializer, ReferralSerializer, AlertSerializer
+    ProgramSerializer, BeneficiaryCategorySerializer, ReferralSerializer, AlertSerializer,
+    ActionPlanSerializer, BeneficiaryProgressSerializer
 )
 
 # Authentication Views
@@ -119,6 +120,58 @@ class AlertViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+class ActionPlanViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows action plans to be viewed or edited.
+    """
+    queryset = ActionPlan.objects.all()
+    serializer_class = ActionPlanSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Filter action plans based on user role
+        if self.request.user.role == 'case_manager':
+            # Case managers can see action plans they created
+            return ActionPlan.objects.filter(created_by=self.request.user).order_by('-created_at')
+        elif self.request.user.role == 'admin':
+            # Admins can see all action plans
+            return ActionPlan.objects.all().order_by('-created_at')
+        else:
+            # Other roles can't see action plans
+            return ActionPlan.objects.none()
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+
+class BeneficiaryProgressViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows beneficiary progress to be viewed or edited.
+    """
+    queryset = BeneficiaryProgress.objects.all()
+    serializer_class = BeneficiaryProgressSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Filter progress records based on user role
+        if self.request.user.role == 'case_manager':
+            # Case managers can see progress for their cases
+            case_ids = Case.objects.filter(case_manager=self.request.user).values_list('id', flat=True)
+            return BeneficiaryProgress.objects.filter(case__id__in=case_ids).order_by('-date')
+        elif self.request.user.role == 'monitoring_and_evaluation':
+            # M&E can see all progress records
+            return BeneficiaryProgress.objects.all().order_by('-date')
+        elif self.request.user.role == 'admin':
+            # Admins can see all progress records
+            return BeneficiaryProgress.objects.all().order_by('-date')
+        else:
+            # Other roles can't see progress records
+            return BeneficiaryProgress.objects.none()
+
+    def perform_create(self, serializer):
+        serializer.save(recorded_by=self.request.user)
 
 # Custom Mixins
 class RoleRequiredMixin(UserPassesTestMixin):
@@ -391,7 +444,7 @@ class AssessmentDetailView(LoginRequiredMixin, AnyRoleRequiredMixin, DetailView)
 class AssessmentCreateView(LoginRequiredMixin, AnyRoleRequiredMixin, CreateView):
     model = Assessment
     template_name = 'assessments/assessment_form.html'
-    fields = ['title', 'case', 'description']
+    fields = ['title', 'case', 'description', 'amount_received', 'income_amount']
 
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
@@ -407,8 +460,47 @@ class AssessmentCreateView(LoginRequiredMixin, AnyRoleRequiredMixin, CreateView)
     def form_valid(self, form):
         # Set the creator to the current user
         form.instance.created_by = self.request.user
+
+        # Save the form to get the assessment instance
+        response = super().form_valid(form)
+
+        beneficiary = self.object.case.beneficiary
+        updated = False
+
+        # Check if the beneficiary can be promoted to another category
+        can_promote_category, new_category = self.object.check_category_promotion()
+
+        if can_promote_category and new_category:
+            old_category = beneficiary.category
+            beneficiary.category = new_category
+            updated = True
+
+            # Add a success message about the category promotion
+            if old_category:
+                messages.success(self.request, 
+                    f"Beneficiary '{beneficiary.name}' has been promoted from '{old_category.name}' to '{new_category.name}' category based on income assessment.")
+            else:
+                messages.success(self.request, 
+                    f"Beneficiary '{beneficiary.name}' has been assigned to '{new_category.name}' category based on income assessment.")
+
+        # Check if the beneficiary can be promoted to another program
+        can_promote_program, new_program = self.object.check_program_promotion()
+
+        if can_promote_program and new_program:
+            old_program = beneficiary.program
+            beneficiary.program = new_program
+            updated = True
+
+            # Add a success message about the program promotion
+            messages.success(self.request, 
+                f"Beneficiary '{beneficiary.name}' has been promoted from '{old_program.name}' to '{new_program.name}' program.")
+
+        # Save the beneficiary if it was updated
+        if updated:
+            beneficiary.save()
+
         messages.success(self.request, f"Assessment '{form.instance.title}' created successfully.")
-        return super().form_valid(form)
+        return response
 
     def get_success_url(self):
         return reverse('assessment_detail', kwargs={'pk': self.object.pk})
@@ -416,7 +508,7 @@ class AssessmentCreateView(LoginRequiredMixin, AnyRoleRequiredMixin, CreateView)
 class AssessmentUpdateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, UpdateView):
     model = Assessment
     template_name = 'assessments/assessment_form.html'
-    fields = ['title', 'case', 'description']
+    fields = ['title', 'case', 'description', 'amount_received', 'income_amount']
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -434,8 +526,46 @@ class AssessmentUpdateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, 
         return form
 
     def form_valid(self, form):
+        # Save the form to get the assessment instance
+        response = super().form_valid(form)
+
+        beneficiary = self.object.case.beneficiary
+        updated = False
+
+        # Check if the beneficiary can be promoted to another category
+        can_promote_category, new_category = self.object.check_category_promotion()
+
+        if can_promote_category and new_category:
+            old_category = beneficiary.category
+            beneficiary.category = new_category
+            updated = True
+
+            # Add a success message about the category promotion
+            if old_category:
+                messages.success(self.request, 
+                    f"Beneficiary '{beneficiary.name}' has been promoted from '{old_category.name}' to '{new_category.name}' category based on income assessment.")
+            else:
+                messages.success(self.request, 
+                    f"Beneficiary '{beneficiary.name}' has been assigned to '{new_category.name}' category based on income assessment.")
+
+        # Check if the beneficiary can be promoted to another program
+        can_promote_program, new_program = self.object.check_program_promotion()
+
+        if can_promote_program and new_program:
+            old_program = beneficiary.program
+            beneficiary.program = new_program
+            updated = True
+
+            # Add a success message about the program promotion
+            messages.success(self.request, 
+                f"Beneficiary '{beneficiary.name}' has been promoted from '{old_program.name}' to '{new_program.name}' program.")
+
+        # Save the beneficiary if it was updated
+        if updated:
+            beneficiary.save()
+
         messages.success(self.request, f"Assessment '{form.instance.title}' updated successfully.")
-        return super().form_valid(form)
+        return response
 
     def get_success_url(self):
         return reverse('assessment_detail', kwargs={'pk': self.object.pk})
@@ -587,7 +717,7 @@ class VisitListView(CaseNoteListView):
 class BeneficiaryCreateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, CreateView):
     model = Beneficiary
     template_name = 'beneficiaries/beneficiary_form.html'
-    fields = ['name', 'gender', 'dob', 'address']
+    fields = ['name', 'gender', 'dob', 'address', 'category', 'program']
 
     def get_success_url(self):
         return reverse('beneficiary_detail', kwargs={'pk': self.object.pk})
@@ -599,7 +729,7 @@ class BeneficiaryCreateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin,
 class BeneficiaryUpdateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, UpdateView):
     model = Beneficiary
     template_name = 'beneficiaries/beneficiary_form.html'
-    fields = ['name', 'gender', 'dob', 'address']
+    fields = ['name', 'gender', 'dob', 'address', 'category', 'program']
 
     def get_success_url(self):
         return reverse('beneficiary_detail', kwargs={'pk': self.object.pk})
@@ -704,12 +834,25 @@ def case_manager_dashboard(request):
     assessment_count = Assessment.objects.filter(created_by=request.user).count()
     program_count = Program.objects.count()
     category_count = BeneficiaryCategory.objects.count()
+    action_plan_count = ActionPlan.objects.filter(created_by=request.user).count()
+
+    # Get case IDs for this case manager
+    case_ids = Case.objects.filter(case_manager=request.user).values_list('id', flat=True)
+
+    # Get progress records count for this case manager's cases
+    progress_count = BeneficiaryProgress.objects.filter(case__id__in=case_ids).count()
 
     # Get cases assigned to this case manager
     my_cases = Case.objects.filter(case_manager=request.user).order_by('-created_at')[:10]
 
     # Get recent case notes by this user
     recent_notes = CaseNote.objects.filter(created_by=request.user).order_by('-created_at')[:10]
+
+    # Get recent action plans by this user
+    recent_action_plans = ActionPlan.objects.filter(created_by=request.user).order_by('-created_at')[:10]
+
+    # Get recent progress records for this case manager's cases
+    recent_progress = BeneficiaryProgress.objects.filter(case__id__in=case_ids).order_by('-date')[:10]
 
     # Get recent programs and categories
     recent_programs = Program.objects.all().order_by('-id')[:5]
@@ -721,8 +864,12 @@ def case_manager_dashboard(request):
         'assessment_count': assessment_count,
         'program_count': program_count,
         'category_count': category_count,
+        'action_plan_count': action_plan_count,
+        'progress_count': progress_count,
         'my_cases': my_cases,
         'recent_notes': recent_notes,
+        'recent_action_plans': recent_action_plans,
+        'recent_progress': recent_progress,
         'recent_programs': recent_programs,
         'recent_categories': recent_categories,
     }
@@ -811,6 +958,8 @@ def monitoring_and_evaluation_dashboard(request):
     case_count = Case.objects.count()
     assessment_count = Assessment.objects.count()
     report_count = Report.objects.filter(created_by=request.user).count()
+    action_plan_count = ActionPlan.objects.count()
+    progress_count = BeneficiaryProgress.objects.count()
 
     # Get recent cases
     recent_cases = Case.objects.all().order_by('-created_at')[:10]
@@ -821,14 +970,24 @@ def monitoring_and_evaluation_dashboard(request):
     # Get recent reports by this user
     recent_reports = Report.objects.filter(created_by=request.user).order_by('-created_at')[:10]
 
+    # Get recent action plans
+    recent_action_plans = ActionPlan.objects.all().order_by('-created_at')[:10]
+
+    # Get recent progress records
+    recent_progress = BeneficiaryProgress.objects.all().order_by('-date')[:10]
+
     context = {
         'beneficiary_count': beneficiary_count,
         'case_count': case_count,
         'assessment_count': assessment_count,
         'report_count': report_count,
+        'action_plan_count': action_plan_count,
+        'progress_count': progress_count,
         'recent_cases': recent_cases,
         'recent_assessments': recent_assessments,
         'recent_reports': recent_reports,
+        'recent_action_plans': recent_action_plans,
+        'recent_progress': recent_progress,
     }
 
     return render(request, 'dashboard/monitoring_and_evaluation_dashboard.html', context)
@@ -1519,3 +1678,275 @@ def generate_pdf_report(request, report=None, data=None, template=None):
         return response
 
     return HttpResponse('Error generating PDF', status=400)
+
+
+# Action Plan Views
+class ActionPlanListView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, ListView):
+    model = ActionPlan
+    template_name = 'action_plans/action_plan_list.html'
+    context_object_name = 'action_plans'
+    paginate_by = 10
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Filter action plans based on user role
+        if self.request.user.role == 'case_manager':
+            # Case managers can see action plans they created
+            queryset = queryset.filter(created_by=self.request.user)
+
+        # Apply search filter
+        search_query = self.request.GET.get('search', '')
+        if search_query:
+            queryset = queryset.filter(
+                Q(title__icontains=search_query) | 
+                Q(description__icontains=search_query) |
+                Q(goals__icontains=search_query) |
+                Q(case__title__icontains=search_query) |
+                Q(case__beneficiary__name__icontains=search_query)
+            )
+
+        # Apply status filter
+        status = self.request.GET.get('status', '')
+        if status:
+            queryset = queryset.filter(status=status)
+
+        # Apply sorting
+        sort = self.request.GET.get('sort', '-created_at')
+        queryset = queryset.order_by(sort)
+
+        return queryset
+
+
+class ActionPlanDetailView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, DetailView):
+    model = ActionPlan
+    template_name = 'action_plans/action_plan_detail.html'
+    context_object_name = 'action_plan'
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Case managers can only view their own action plans
+        if self.request.user.role == 'case_manager':
+            queryset = queryset.filter(created_by=self.request.user)
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        action_plan = self.get_object()
+
+        # Get related progress records
+        context['progress_records'] = BeneficiaryProgress.objects.filter(
+            action_plan=action_plan
+        ).order_by('-date')
+
+        return context
+
+
+class ActionPlanCreateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, CreateView):
+    model = ActionPlan
+    template_name = 'action_plans/action_plan_form.html'
+    fields = ['title', 'case', 'description', 'goals', 'timeline', 'status']
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # Limit case choices based on user role
+        if self.request.user.role == 'case_manager':
+            form.fields['case'].queryset = Case.objects.filter(case_manager=self.request.user)
+        return form
+
+    def form_valid(self, form):
+        # Set the creator to the current user
+        form.instance.created_by = self.request.user
+        messages.success(self.request, f"Action plan '{form.instance.title}' created successfully.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('action_plan_detail', kwargs={'pk': self.object.pk})
+
+
+class ActionPlanUpdateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, UpdateView):
+    model = ActionPlan
+    template_name = 'action_plans/action_plan_form.html'
+    fields = ['title', 'case', 'description', 'goals', 'timeline', 'status']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Case managers can only update their own action plans
+        if self.request.user.role == 'case_manager':
+            queryset = queryset.filter(created_by=self.request.user)
+        return queryset
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # Limit case choices based on user role
+        if self.request.user.role == 'case_manager':
+            form.fields['case'].queryset = Case.objects.filter(case_manager=self.request.user)
+        return form
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Action plan '{form.instance.title}' updated successfully.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('action_plan_detail', kwargs={'pk': self.object.pk})
+
+
+class ActionPlanDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+    model = ActionPlan
+    template_name = 'action_plans/action_plan_confirm_delete.html'
+    context_object_name = 'action_plan'
+    success_url = reverse_lazy('action_plan_list')
+
+    def delete(self, request, *args, **kwargs):
+        action_plan = self.get_object()
+        messages.success(request, f"Action plan '{action_plan.title}' deleted successfully.")
+        return super().delete(request, *args, **kwargs)
+
+
+# Beneficiary Progress Views
+class BeneficiaryProgressListView(LoginRequiredMixin, CanTrackBeneficiaryProgressMixin, ListView):
+    model = BeneficiaryProgress
+    template_name = 'progress/progress_list.html'
+    context_object_name = 'progress_records'
+    paginate_by = 10
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Filter progress records based on user role
+        if self.request.user.role == 'case_manager':
+            # Case managers can see progress for their cases
+            case_ids = Case.objects.filter(case_manager=self.request.user).values_list('id', flat=True)
+            queryset = queryset.filter(case__id__in=case_ids)
+
+        # Apply beneficiary filter
+        beneficiary_id = self.request.GET.get('beneficiary', '')
+        if beneficiary_id:
+            queryset = queryset.filter(beneficiary_id=beneficiary_id)
+
+        # Apply case filter
+        case_id = self.request.GET.get('case', '')
+        if case_id:
+            queryset = queryset.filter(case_id=case_id)
+
+        # Apply action plan filter
+        action_plan_id = self.request.GET.get('action_plan', '')
+        if action_plan_id:
+            queryset = queryset.filter(action_plan_id=action_plan_id)
+
+        # Apply status filter
+        status = self.request.GET.get('status', '')
+        if status:
+            queryset = queryset.filter(status=status)
+
+        # Apply search filter
+        search_query = self.request.GET.get('search', '')
+        if search_query:
+            queryset = queryset.filter(
+                Q(beneficiary__name__icontains=search_query) | 
+                Q(notes__icontains=search_query) |
+                Q(case__title__icontains=search_query) |
+                Q(action_plan__title__icontains=search_query)
+            )
+
+        # Apply sorting
+        sort = self.request.GET.get('sort', '-date')
+        queryset = queryset.order_by(sort)
+
+        return queryset
+
+
+class BeneficiaryProgressDetailView(LoginRequiredMixin, CanTrackBeneficiaryProgressMixin, DetailView):
+    model = BeneficiaryProgress
+    template_name = 'progress/progress_detail.html'
+    context_object_name = 'progress'
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Filter based on user role
+        if self.request.user.role == 'case_manager':
+            # Case managers can see progress for their cases
+            case_ids = Case.objects.filter(case_manager=self.request.user).values_list('id', flat=True)
+            queryset = queryset.filter(case__id__in=case_ids)
+        return queryset
+
+
+class BeneficiaryProgressCreateView(LoginRequiredMixin, CanTrackBeneficiaryProgressMixin, CreateView):
+    model = BeneficiaryProgress
+    template_name = 'progress/progress_form.html'
+    fields = ['beneficiary', 'case', 'action_plan', 'date', 'status', 'progress_percentage', 'notes']
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # Limit choices based on user role
+        if self.request.user.role == 'case_manager':
+            # Case managers can only select their cases
+            case_ids = Case.objects.filter(case_manager=self.request.user).values_list('id', flat=True)
+            form.fields['case'].queryset = Case.objects.filter(id__in=case_ids)
+
+            # Limit beneficiaries to those in their cases
+            beneficiary_ids = Case.objects.filter(case_manager=self.request.user).values_list('beneficiary_id', flat=True)
+            form.fields['beneficiary'].queryset = Beneficiary.objects.filter(id__in=beneficiary_ids)
+
+            # Limit action plans to those they created
+            form.fields['action_plan'].queryset = ActionPlan.objects.filter(created_by=self.request.user)
+        return form
+
+    def form_valid(self, form):
+        # Set the recorder to the current user
+        form.instance.recorded_by = self.request.user
+        messages.success(self.request, f"Progress record for {form.instance.beneficiary.name} created successfully.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('beneficiary_progress_detail', kwargs={'pk': self.object.pk})
+
+
+class BeneficiaryProgressUpdateView(LoginRequiredMixin, CanTrackBeneficiaryProgressMixin, UpdateView):
+    model = BeneficiaryProgress
+    template_name = 'progress/progress_form.html'
+    fields = ['beneficiary', 'case', 'action_plan', 'date', 'status', 'progress_percentage', 'notes']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Filter based on user role
+        if self.request.user.role == 'case_manager':
+            # Case managers can only update progress for their cases
+            case_ids = Case.objects.filter(case_manager=self.request.user).values_list('id', flat=True)
+            queryset = queryset.filter(case__id__in=case_ids)
+        return queryset
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # Limit choices based on user role
+        if self.request.user.role == 'case_manager':
+            # Case managers can only select their cases
+            case_ids = Case.objects.filter(case_manager=self.request.user).values_list('id', flat=True)
+            form.fields['case'].queryset = Case.objects.filter(id__in=case_ids)
+
+            # Limit beneficiaries to those in their cases
+            beneficiary_ids = Case.objects.filter(case_manager=self.request.user).values_list('beneficiary_id', flat=True)
+            form.fields['beneficiary'].queryset = Beneficiary.objects.filter(id__in=beneficiary_ids)
+
+            # Limit action plans to those they created
+            form.fields['action_plan'].queryset = ActionPlan.objects.filter(created_by=self.request.user)
+        return form
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Progress record for {form.instance.beneficiary.name} updated successfully.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('beneficiary_progress_detail', kwargs={'pk': self.object.pk})
+
+
+class BeneficiaryProgressDeleteView(LoginRequiredMixin, AdminRequiredMixin, DeleteView):
+    model = BeneficiaryProgress
+    template_name = 'progress/progress_confirm_delete.html'
+    context_object_name = 'progress'
+    success_url = reverse_lazy('beneficiary_progress_list')
+
+    def delete(self, request, *args, **kwargs):
+        progress = self.get_object()
+        messages.success(request, f"Progress record for {progress.beneficiary.name} deleted successfully.")
+        return super().delete(request, *args, **kwargs)

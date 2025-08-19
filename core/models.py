@@ -88,12 +88,65 @@ class Assessment(models.Model):
     case = models.ForeignKey(Case, on_delete=models.CASCADE, related_name='assessments')
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_assessments')
     amount_received = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Amount received in this assessment")
+    income_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Beneficiary's annual income amount")
     year = models.PositiveIntegerField(default=timezone.now().year)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.title
+
+    def check_category_promotion(self):
+        """
+        Check if the beneficiary can be promoted to another category based on their income.
+        Returns a tuple (can_promote, new_category) where:
+        - can_promote is a boolean indicating if the beneficiary can be promoted
+        - new_category is the new category the beneficiary can be promoted to, or None if they can't be promoted
+        """
+        beneficiary = self.case.beneficiary
+        current_category = beneficiary.category
+
+        if not current_category:
+            # If the beneficiary doesn't have a category, find an appropriate one
+            categories = BeneficiaryCategory.objects.filter(max_annual_amount__gte=self.income_amount).order_by('max_annual_amount')
+            if categories.exists():
+                return True, categories.first()
+            return False, None
+
+        # Check if the beneficiary's income is below the max annual amount for their current category
+        if self.income_amount <= current_category.max_annual_amount:
+            return False, None
+
+        # Find categories with higher max annual amounts
+        higher_categories = BeneficiaryCategory.objects.filter(
+            max_annual_amount__gt=current_category.max_annual_amount,
+            max_annual_amount__gte=self.income_amount
+        ).order_by('max_annual_amount')
+
+        if higher_categories.exists():
+            return True, higher_categories.first()
+
+        return False, None
+
+    def check_program_promotion(self):
+        """
+        Check if the beneficiary can be promoted to another program based on their current program.
+        Returns a tuple (can_promote, new_program) where:
+        - can_promote is a boolean indicating if the beneficiary can be promoted
+        - new_program is the new program the beneficiary can be promoted to, or None if they can't be promoted
+        """
+        beneficiary = self.case.beneficiary
+        current_program = beneficiary.program
+
+        if not current_program:
+            # If the beneficiary doesn't have a program, they can't be promoted
+            return False, None
+
+        # Check if the current program has a next program defined
+        if current_program.next_program:
+            return True, current_program.next_program
+
+        return False, None
 
 
 class AssessmentQuestion(models.Model):
@@ -232,3 +285,54 @@ class Alert(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+
+class ActionPlan(models.Model):
+    """Action plan model for case managers to create plans for beneficiaries"""
+    title = models.CharField(max_length=100)
+    case = models.ForeignKey(Case, on_delete=models.CASCADE, related_name='action_plans')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_action_plans')
+    description = models.TextField(help_text="Detailed description of the action plan")
+    goals = models.TextField(help_text="Goals to be achieved through this action plan")
+    timeline = models.TextField(help_text="Timeline for completing the action plan")
+    status = models.CharField(max_length=20, choices=[
+        ('draft', 'Draft'),
+        ('active', 'Active'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled')
+    ], default='draft')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.title} for {self.case.beneficiary.name}"
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class BeneficiaryProgress(models.Model):
+    """Model for tracking beneficiary progress"""
+    beneficiary = models.ForeignKey(Beneficiary, on_delete=models.CASCADE, related_name='progress_records')
+    case = models.ForeignKey(Case, on_delete=models.CASCADE, related_name='progress_records', null=True, blank=True)
+    action_plan = models.ForeignKey(ActionPlan, on_delete=models.SET_NULL, related_name='progress_records', null=True, blank=True)
+    recorded_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recorded_progress')
+    date = models.DateField(default=timezone.now)
+    status = models.CharField(max_length=20, choices=[
+        ('on_track', 'On Track'),
+        ('behind', 'Behind Schedule'),
+        ('ahead', 'Ahead of Schedule'),
+        ('completed', 'Completed'),
+        ('not_started', 'Not Started')
+    ], default='not_started')
+    progress_percentage = models.PositiveIntegerField(default=0, help_text="Percentage of completion (0-100)")
+    notes = models.TextField(blank=True, help_text="Notes about the progress")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Progress for {self.beneficiary.name} - {self.date}"
+
+    class Meta:
+        ordering = ['-date']
+        verbose_name_plural = "Beneficiary Progress Records"

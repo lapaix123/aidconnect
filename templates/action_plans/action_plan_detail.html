@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ action_plan.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ action_plan.title }}</h1>
+        <div>
+            <a href="{% url 'action_plan_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Action Plans
+            </a>
+            {% if user.role == 'admin' or user == action_plan.created_by %}
+            <a href="{% url 'action_plan_update' action_plan.id %}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> Edit
+            </a>
+            {% endif %}
+            {% if user.role == 'admin' %}
+            <a href="{% url 'action_plan_delete' action_plan.id %}" class="btn btn-danger">
+                <i class="fas fa-trash"></i> Delete
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Action Plan Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6 class="fw-bold">Description</h6>
+                        <p>{{ action_plan.description|linebreaks }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="fw-bold">Goals</h6>
+                        <p>{{ action_plan.goals|linebreaks }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="fw-bold">Timeline</h6>
+                        <p>{{ action_plan.timeline|linebreaks }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Progress Records</h5>
+                </div>
+                <div class="card-body">
+                    {% if progress_records %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Progress</th>
+                                    <th>Recorded By</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for progress in progress_records %}
+                                <tr>
+                                    <td>{{ progress.date|date:"M d, Y" }}</td>
+                                    <td>
+                                        {% if progress.status == 'on_track' %}
+                                        <span class="badge bg-success">On Track</span>
+                                        {% elif progress.status == 'behind' %}
+                                        <span class="badge bg-warning">Behind Schedule</span>
+                                        {% elif progress.status == 'ahead' %}
+                                        <span class="badge bg-info">Ahead of Schedule</span>
+                                        {% elif progress.status == 'completed' %}
+                                        <span class="badge bg-primary">Completed</span>
+                                        {% elif progress.status == 'not_started' %}
+                                        <span class="badge bg-secondary">Not Started</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="progress">
+                                            <div class="progress-bar" role="progressbar" style="width: {{ progress.progress_percentage }}%;" aria-valuenow="{{ progress.progress_percentage }}" aria-valuemin="0" aria-valuemax="100">{{ progress.progress_percentage }}%</div>
+                                        </div>
+                                    </td>
+                                    <td>{{ progress.recorded_by.username }}</td>
+                                    <td>
+                                        <a href="{% url 'beneficiary_progress_detail' progress.id %}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        No progress records found for this action plan.
+                    </div>
+                    {% endif %}
+
+                    {% if user.role == 'case_manager' or user.role == 'monitoring_and_evaluation' or user.role == 'admin' %}
+                    <div class="mt-3">
+                        <a href="{% url 'beneficiary_progress_create' %}?action_plan={{ action_plan.id }}" class="btn btn-success">
+                            <i class="fas fa-plus"></i> Add Progress Record
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Action Plan Info</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <strong>Status:</strong>
+                            {% if action_plan.status == 'draft' %}
+                            <span class="badge bg-secondary">Draft</span>
+                            {% elif action_plan.status == 'active' %}
+                            <span class="badge bg-primary">Active</span>
+                            {% elif action_plan.status == 'completed' %}
+                            <span class="badge bg-success">Completed</span>
+                            {% elif action_plan.status == 'cancelled' %}
+                            <span class="badge bg-danger">Cancelled</span>
+                            {% endif %}
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <strong>Created By:</strong>
+                            <span>{{ action_plan.created_by.username }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <strong>Created At:</strong>
+                            <span>{{ action_plan.created_at|date:"M d, Y" }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <strong>Last Updated:</strong>
+                            <span>{{ action_plan.updated_at|date:"M d, Y" }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Related Information</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">
+                            <strong>Case:</strong>
+                            <a href="{% url 'case_detail' action_plan.case.id %}">{{ action_plan.case.title }}</a>
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Beneficiary:</strong>
+                            <a href="{% url 'beneficiary_detail' action_plan.case.beneficiary.id %}">{{ action_plan.case.beneficiary.name }}</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

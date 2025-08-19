@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}
+{% if form.instance.id %}Edit Action Plan{% else %}Create Action Plan{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{% if form.instance.id %}Edit Action Plan{% else %}Create Action Plan{% endif %}</h1>
+        <a href="{% if form.instance.id %}{% url 'action_plan_detail' form.instance.id %}{% else %}{% url 'action_plan_list' %}{% endif %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Action Plan Information</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="{{ form.title.id_for_label }}" class="form-label">Title</label>
+                        {{ form.title.errors }}
+                        <input type="text" name="{{ form.title.name }}" id="{{ form.title.id_for_label }}" class="form-control {% if form.title.errors %}is-invalid{% endif %}" value="{{ form.title.value|default:'' }}" required>
+                        <div class="form-text">Enter a descriptive title for the action plan.</div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="{{ form.case.id_for_label }}" class="form-label">Case</label>
+                        {{ form.case.errors }}
+                        <select name="{{ form.case.name }}" id="{{ form.case.id_for_label }}" class="form-select {% if form.case.errors %}is-invalid{% endif %}" required>
+                            <option value="">Select a case</option>
+                            {% for choice in form.case.field.choices %}
+                            <option value="{{ choice.0 }}" {% if form.case.value|stringformat:"s" == choice.0|stringformat:"s" %}selected{% endif %}>{{ choice.1 }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Select the case this action plan is for.</div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                    {{ form.description.errors }}
+                    <textarea name="{{ form.description.name }}" id="{{ form.description.id_for_label }}" class="form-control {% if form.description.errors %}is-invalid{% endif %}" rows="5" required>{{ form.description.value|default:'' }}</textarea>
+                    <div class="form-text">Provide a detailed description of the action plan.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.goals.id_for_label }}" class="form-label">Goals</label>
+                    {{ form.goals.errors }}
+                    <textarea name="{{ form.goals.name }}" id="{{ form.goals.id_for_label }}" class="form-control {% if form.goals.errors %}is-invalid{% endif %}" rows="5" required>{{ form.goals.value|default:'' }}</textarea>
+                    <div class="form-text">List the goals to be achieved through this action plan.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.timeline.id_for_label }}" class="form-label">Timeline</label>
+                    {{ form.timeline.errors }}
+                    <textarea name="{{ form.timeline.name }}" id="{{ form.timeline.id_for_label }}" class="form-control {% if form.timeline.errors %}is-invalid{% endif %}" rows="5" required>{{ form.timeline.value|default:'' }}</textarea>
+                    <div class="form-text">Outline the timeline for completing the action plan.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.status.id_for_label }}" class="form-label">Status</label>
+                    {{ form.status.errors }}
+                    <select name="{{ form.status.name }}" id="{{ form.status.id_for_label }}" class="form-select {% if form.status.errors %}is-invalid{% endif %}">
+                        {% for choice in form.status.field.choices %}
+                        <option value="{{ choice.0 }}" {% if form.status.value == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Select the current status of the action plan.</div>
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> {% if form.instance.id %}Update{% else %}Create{% endif %} Action Plan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

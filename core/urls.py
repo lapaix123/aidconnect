@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     UserViewSet, BeneficiaryViewSet, CaseViewSet, CaseNoteViewSet,
     AssessmentViewSet, AssessmentQuestionViewSet, AssessmentAnswerViewSet,
-    ReferralViewSet, AlertViewSet,
+    ReferralViewSet, AlertViewSet, ActionPlanViewSet, BeneficiaryProgressViewSet,
     dashboard_redirect, admin_dashboard, case_manager_dashboard, field_officer_dashboard,
     partner_organisation_dashboard, monitoring_and_evaluation_dashboard, program_director_dashboard,
     login_view, BeneficiaryListView, BeneficiaryDetailView, BeneficiaryCreateView,
@@ -24,6 +24,11 @@ from .views import (
     ReportTemplateUpdateView, ReportTemplateDeleteView, ReportListView, 
     ReportDetailView, ReportCreateView, ReportUpdateView, ReportDeleteView,
     generate_report, generate_custom_report,
+    # Action Plan views
+    ActionPlanListView, ActionPlanDetailView, ActionPlanCreateView, ActionPlanUpdateView, ActionPlanDeleteView,
+    # Beneficiary Progress views
+    BeneficiaryProgressListView, BeneficiaryProgressDetailView, BeneficiaryProgressCreateView, 
+    BeneficiaryProgressUpdateView, BeneficiaryProgressDeleteView,
 )
 
 # API Router
@@ -40,6 +45,8 @@ router.register(r'programs', ProgramViewSet)
 router.register(r'categories', BeneficiaryCategoryViewSet)
 router.register(r'referrals', ReferralViewSet)
 router.register(r'alerts', AlertViewSet)
+router.register(r'action-plans', ActionPlanViewSet)
+router.register(r'beneficiary-progress', BeneficiaryProgressViewSet)
 
 # URL patterns
 urlpatterns = [
@@ -133,4 +140,18 @@ urlpatterns = [
     path('alerts/<int:pk>/', AlertDetailView.as_view(), name='alert_detail'),
     path('alerts/<int:pk>/delete/', AlertDeleteView.as_view(), name='alert_delete'),
     path('alerts/mark-all-read/', mark_all_alerts_read, name='mark_all_alerts_read'),
+
+    # Action Plans
+    path('action-plans/', ActionPlanListView.as_view(), name='action_plan_list'),
+    path('action-plans/add/', ActionPlanCreateView.as_view(), name='action_plan_create'),
+    path('action-plans/<int:pk>/', ActionPlanDetailView.as_view(), name='action_plan_detail'),
+    path('action-plans/<int:pk>/edit/', ActionPlanUpdateView.as_view(), name='action_plan_update'),
+    path('action-plans/<int:pk>/delete/', ActionPlanDeleteView.as_view(), name='action_plan_delete'),
+
+    # Beneficiary Progress
+    path('progress/', BeneficiaryProgressListView.as_view(), name='beneficiary_progress_list'),
+    path('progress/add/', BeneficiaryProgressCreateView.as_view(), name='beneficiary_progress_create'),
+    path('progress/<int:pk>/', BeneficiaryProgressDetailView.as_view(), name='beneficiary_progress_detail'),
+    path('progress/<int:pk>/edit/', BeneficiaryProgressUpdateView.as_view(), name='beneficiary_progress_update'),
+    path('progress/<int:pk>/delete/', BeneficiaryProgressDeleteView.as_view(), name='beneficiary_progress_delete'),
 ]

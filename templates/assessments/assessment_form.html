@@ -17,7 +17,7 @@
                 <div class="card-body">
                     <form method="post" novalidate>
                         {% csrf_token %}
-                        
+
                         <div class="mb-3">
                             <label for="{{ form.title.id_for_label }}" class="form-label">Title</label>
                             <input type="text" class="form-control {% if form.title.errors %}is-invalid{% endif %}" 
@@ -29,7 +29,7 @@
                                 </div>
                             {% endif %}
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="{{ form.case.id_for_label }}" class="form-label">Case</label>
                             <select class="form-select {% if form.case.errors %}is-invalid{% endif %}" 
@@ -47,7 +47,7 @@
                                 </div>
                             {% endif %}
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
                             <textarea class="form-control {% if form.description.errors %}is-invalid{% endif %}" 
@@ -59,7 +59,35 @@
                                 </div>
                             {% endif %}
                         </div>
-                        
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.amount_received.id_for_label }}" class="form-label">Amount Received ($)</label>
+                                <input type="number" step="0.01" class="form-control {% if form.amount_received.errors %}is-invalid{% endif %}" 
+                                    id="{{ form.amount_received.id_for_label }}" name="{{ form.amount_received.html_name }}" 
+                                    value="{{ form.amount_received.value|default:'0.00' }}">
+                                {% if form.amount_received.errors %}
+                                    <div class="invalid-feedback">
+                                        {{ form.amount_received.errors }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">Amount received by the beneficiary in this assessment</div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="{{ form.income_amount.id_for_label }}" class="form-label">Annual Income ($)</label>
+                                <input type="number" step="0.01" class="form-control {% if form.income_amount.errors %}is-invalid{% endif %}" 
+                                    id="{{ form.income_amount.id_for_label }}" name="{{ form.income_amount.html_name }}" 
+                                    value="{{ form.income_amount.value|default:'0.00' }}">
+                                {% if form.income_amount.errors %}
+                                    <div class="invalid-feedback">
+                                        {{ form.income_amount.errors }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">Beneficiary's annual income amount (used for category eligibility)</div>
+                            </div>
+                        </div>
+
                         <div class="d-flex justify-content-between">
                             <a href="{% if object %}{% url 'assessment_detail' object.id %}{% else %}{% url 'assessment_list' %}{% endif %}" class="btn btn-secondary">
                                 <i class="bi bi-arrow-left me-2"></i> Cancel
@@ -71,7 +99,7 @@
                     </form>
                 </div>
             </div>
-            
+
             {% if object %}
             <div class="card mt-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -177,7 +205,7 @@
         // Show/hide choices field based on question type
         const questionType = document.getElementById('questionType');
         const choicesContainer = document.getElementById('choicesContainer');
-        
+
         if (questionType && choicesContainer) {
             questionType.addEventListener('change', function() {
                 if (this.value === 'choice') {
