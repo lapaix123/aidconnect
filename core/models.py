@@ -96,9 +96,24 @@ class Assessment(models.Model):
     def __str__(self):
         return self.title
 
+    def get_total_amount_received(self):
+        """
+        Calculate the total amount received by the beneficiary across all assessments.
+        Returns the total amount as a decimal.
+        """
+        beneficiary = self.case.beneficiary
+        # Get all cases for this beneficiary
+        case_ids = Case.objects.filter(beneficiary=beneficiary).values_list('id', flat=True)
+        # Get all assessments for these cases
+        assessments = Assessment.objects.filter(case__id__in=case_ids)
+        # Sum the amount_received field
+        total_amount = sum(assessment.amount_received for assessment in assessments)
+        return total_amount
+
     def check_category_promotion(self):
         """
-        Check if the beneficiary can be promoted to another category based on their income.
+        Check if the beneficiary can be promoted to another category based on their income
+        and total amount received.
         Returns a tuple (can_promote, new_category) where:
         - can_promote is a boolean indicating if the beneficiary can be promoted
         - new_category is the new category the beneficiary can be promoted to, or None if they can't be promoted
@@ -106,21 +121,25 @@ class Assessment(models.Model):
         beneficiary = self.case.beneficiary
         current_category = beneficiary.category
 
+        # Calculate total amount received by the beneficiary
+        total_amount_received = self.get_total_amount_received()
+
         if not current_category:
-            # If the beneficiary doesn't have a category, find an appropriate one
+            # If the beneficiary doesn't have a category, find an appropriate one based on income
             categories = BeneficiaryCategory.objects.filter(max_annual_amount__gte=self.income_amount).order_by('max_annual_amount')
             if categories.exists():
                 return True, categories.first()
             return False, None
 
         # Check if the beneficiary's income is below the max annual amount for their current category
-        if self.income_amount <= current_category.max_annual_amount:
+        # and if the total amount received is below the max annual amount
+        if self.income_amount <= current_category.max_annual_amount and total_amount_received <= current_category.max_annual_amount:
             return False, None
 
-        # Find categories with higher max annual amounts
+        # Find categories with higher max annual amounts that can accommodate both income and total amount received
         higher_categories = BeneficiaryCategory.objects.filter(
             max_annual_amount__gt=current_category.max_annual_amount,
-            max_annual_amount__gte=self.income_amount
+            max_annual_amount__gte=max(self.income_amount, total_amount_received)
         ).order_by('max_annual_amount')
 
         if higher_categories.exists():

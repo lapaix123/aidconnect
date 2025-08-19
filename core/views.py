@@ -467,6 +467,9 @@ class AssessmentCreateView(LoginRequiredMixin, AnyRoleRequiredMixin, CreateView)
         beneficiary = self.object.case.beneficiary
         updated = False
 
+        # Calculate total amount received
+        total_amount_received = self.object.get_total_amount_received()
+
         # Check if the beneficiary can be promoted to another category
         can_promote_category, new_category = self.object.check_category_promotion()
 
@@ -478,10 +481,10 @@ class AssessmentCreateView(LoginRequiredMixin, AnyRoleRequiredMixin, CreateView)
             # Add a success message about the category promotion
             if old_category:
                 messages.success(self.request, 
-                    f"Beneficiary '{beneficiary.name}' has been promoted from '{old_category.name}' to '{new_category.name}' category based on income assessment.")
+                    f"Beneficiary '{beneficiary.name}' has been promoted from '{old_category.name}' to '{new_category.name}' category based on income assessment and total amount received (${total_amount_received:.2f}).")
             else:
                 messages.success(self.request, 
-                    f"Beneficiary '{beneficiary.name}' has been assigned to '{new_category.name}' category based on income assessment.")
+                    f"Beneficiary '{beneficiary.name}' has been assigned to '{new_category.name}' category based on income assessment and total amount received (${total_amount_received:.2f}).")
 
         # Check if the beneficiary can be promoted to another program
         can_promote_program, new_program = self.object.check_program_promotion()
@@ -532,6 +535,9 @@ class AssessmentUpdateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, 
         beneficiary = self.object.case.beneficiary
         updated = False
 
+        # Calculate total amount received
+        total_amount_received = self.object.get_total_amount_received()
+
         # Check if the beneficiary can be promoted to another category
         can_promote_category, new_category = self.object.check_category_promotion()
 
@@ -543,10 +549,10 @@ class AssessmentUpdateView(LoginRequiredMixin, AdminOrCaseManagerRequiredMixin, 
             # Add a success message about the category promotion
             if old_category:
                 messages.success(self.request, 
-                    f"Beneficiary '{beneficiary.name}' has been promoted from '{old_category.name}' to '{new_category.name}' category based on income assessment.")
+                    f"Beneficiary '{beneficiary.name}' has been promoted from '{old_category.name}' to '{new_category.name}' category based on income assessment and total amount received (${total_amount_received:.2f}).")
             else:
                 messages.success(self.request, 
-                    f"Beneficiary '{beneficiary.name}' has been assigned to '{new_category.name}' category based on income assessment.")
+                    f"Beneficiary '{beneficiary.name}' has been assigned to '{new_category.name}' category based on income assessment and total amount received (${total_amount_received:.2f}).")
 
         # Check if the beneficiary can be promoted to another program
         can_promote_program, new_program = self.object.check_program_promotion()
