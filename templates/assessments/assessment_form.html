@@ -7,103 +7,287 @@
 {% block content %}
 <div class="container-fluid">
     <div class="row justify-content-center">
-        <div class="col-md-8">
+        <div class="col-md-10">
             <div class="card">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h1 class="h3 mb-0">
                         {% if object %}Edit Assessment: {{ object.title }}{% else %}Create New Assessment{% endif %}
                     </h1>
+                    <div>
+                        <button type="button" class="btn btn-outline-secondary me-2" id="saveOfflineBtn">
+                            <i class="bi bi-cloud-arrow-down me-1"></i> Save for Offline
+                        </button>
+                        <div class="form-check form-switch d-inline-block me-3">
+                            <input class="form-check-input" type="checkbox" id="offlineMode">
+                            <label class="form-check-label" for="offlineMode">Offline Mode</label>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <form method="post" novalidate>
-                        {% csrf_token %}
 
-                        <div class="mb-3">
-                            <label for="{{ form.title.id_for_label }}" class="form-label">Title</label>
-                            <input type="text" class="form-control {% if form.title.errors %}is-invalid{% endif %}" 
-                                id="{{ form.title.id_for_label }}" name="{{ form.title.html_name }}" 
-                                value="{{ form.title.value|default:'' }}">
-                            {% if form.title.errors %}
-                                <div class="invalid-feedback">
-                                    {{ form.title.errors }}
-                                </div>
-                            {% endif %}
-                        </div>
+                <!-- Progress Bar -->
+                <div class="card-body pb-0">
+                    <div class="progress mb-4">
+                        <div class="progress-bar" role="progressbar" style="width: 0%;" id="assessmentProgress" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                    </div>
 
-                        <div class="mb-3">
-                            <label for="{{ form.case.id_for_label }}" class="form-label">Case</label>
-                            <select class="form-select {% if form.case.errors %}is-invalid{% endif %}" 
-                                id="{{ form.case.id_for_label }}" name="{{ form.case.html_name }}">
-                                <option value="">Select a case</option>
-                                {% for choice in form.case.field.choices %}
-                                    <option value="{{ choice.0 }}" {% if form.case.value|stringformat:"s" == choice.0|stringformat:"s" %}selected{% endif %}>
-                                        {{ choice.1 }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                            {% if form.case.errors %}
-                                <div class="invalid-feedback">
-                                    {{ form.case.errors }}
-                                </div>
-                            {% endif %}
-                        </div>
+                    <!-- Basic Info Section -->
+                    <div id="basicInfoSection">
+                        <form method="post" id="assessmentForm" novalidate>
+                            {% csrf_token %}
 
-                        <div class="mb-3">
-                            <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
-                            <textarea class="form-control {% if form.description.errors %}is-invalid{% endif %}" 
-                                id="{{ form.description.id_for_label }}" name="{{ form.description.html_name }}" 
-                                rows="5">{{ form.description.value|default:'' }}</textarea>
-                            {% if form.description.errors %}
-                                <div class="invalid-feedback">
-                                    {{ form.description.errors }}
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="{{ form.amount_received.id_for_label }}" class="form-label">Amount Received ($)</label>
-                                <input type="number" step="0.01" class="form-control {% if form.amount_received.errors %}is-invalid{% endif %}" 
-                                    id="{{ form.amount_received.id_for_label }}" name="{{ form.amount_received.html_name }}" 
-                                    value="{{ form.amount_received.value|default:'0.00' }}">
-                                {% if form.amount_received.errors %}
+                            <div class="mb-3">
+                                <label for="{{ form.title.id_for_label }}" class="form-label">Title</label>
+                                <input type="text" class="form-control {% if form.title.errors %}is-invalid{% endif %}" 
+                                    id="{{ form.title.id_for_label }}" name="{{ form.title.html_name }}" 
+                                    value="{{ form.title.value|default:'' }}">
+                                {% if form.title.errors %}
                                     <div class="invalid-feedback">
-                                        {{ form.amount_received.errors }}
+                                        {{ form.title.errors }}
                                     </div>
                                 {% endif %}
-                                <div class="form-text">Amount received by the beneficiary in this assessment</div>
                             </div>
 
-                            <div class="col-md-6">
-                                <label for="{{ form.income_amount.id_for_label }}" class="form-label">Annual Income ($)</label>
-                                <input type="number" step="0.01" class="form-control {% if form.income_amount.errors %}is-invalid{% endif %}" 
-                                    id="{{ form.income_amount.id_for_label }}" name="{{ form.income_amount.html_name }}" 
-                                    value="{{ form.income_amount.value|default:'0.00' }}">
-                                {% if form.income_amount.errors %}
+                            <div class="mb-3">
+                                <label for="{{ form.case.id_for_label }}" class="form-label">Case</label>
+                                <select class="form-select {% if form.case.errors %}is-invalid{% endif %}" 
+                                    id="{{ form.case.id_for_label }}" name="{{ form.case.html_name }}">
+                                    <option value="">Select a case</option>
+                                    {% for choice in form.case.field.choices %}
+                                        <option value="{{ choice.0 }}" {% if form.case.value|stringformat:"s" == choice.0|stringformat:"s" %}selected{% endif %}>
+                                            {{ choice.1 }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.case.errors %}
                                     <div class="invalid-feedback">
-                                        {{ form.income_amount.errors }}
+                                        {{ form.case.errors }}
                                     </div>
                                 {% endif %}
-                                <div class="form-text">Beneficiary's annual income amount (used for category eligibility)</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                                <textarea class="form-control {% if form.description.errors %}is-invalid{% endif %}" 
+                                    id="{{ form.description.id_for_label }}" name="{{ form.description.html_name }}" 
+                                    rows="5">{{ form.description.value|default:'' }}</textarea>
+                                {% if form.description.errors %}
+                                    <div class="invalid-feedback">
+                                        {{ form.description.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="{{ form.amount_received.id_for_label }}" class="form-label">Amount Received ($)</label>
+                                    <input type="number" step="0.01" class="form-control {% if form.amount_received.errors %}is-invalid{% endif %}" 
+                                        id="{{ form.amount_received.id_for_label }}" name="{{ form.amount_received.html_name }}" 
+                                        value="{{ form.amount_received.value|default:'0.00' }}">
+                                    {% if form.amount_received.errors %}
+                                        <div class="invalid-feedback">
+                                            {{ form.amount_received.errors }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">Amount received by the beneficiary in this assessment</div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="{{ form.income_amount.id_for_label }}" class="form-label">Annual Income ($)</label>
+                                    <input type="number" step="0.01" class="form-control {% if form.income_amount.errors %}is-invalid{% endif %}" 
+                                        id="{{ form.income_amount.id_for_label }}" name="{{ form.income_amount.html_name }}" 
+                                        value="{{ form.income_amount.value|default:'0.00' }}">
+                                    {% if form.income_amount.errors %}
+                                        <div class="invalid-feedback">
+                                            {{ form.income_amount.errors }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">Beneficiary's annual income amount (used for category eligibility)</div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <a href="{% if object %}{% url 'assessment_detail' object.id %}{% else %}{% url 'assessment_list' %}{% endif %}" class="btn btn-secondary">
+                                    <i class="bi bi-arrow-left me-2"></i> Cancel
+                                </a>
+                                <button type="button" id="nextToQuestionsBtn" class="btn btn-primary">
+                                    <i class="bi bi-arrow-right me-2"></i> Next: Assessment Questions
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Dynamic Assessment Questions Section -->
+                    <div id="questionsSection" style="display: none;">
+                        <h4 class="mb-4">Assessment Questions</h4>
+
+                        <div id="dynamicQuestionsContainer">
+                            <!-- Housing Section -->
+                            <div class="card mb-4 question-section" id="housingSection">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">Housing</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-4">
+                                        <label class="form-label">1. What is the current housing situation?</label>
+                                        <select class="form-select question-input" data-section="housing" data-question="situation" data-required="true">
+                                            <option value="">Select an option</option>
+                                            <option value="homeless">Homeless</option>
+                                            <option value="temporary">Temporary Housing</option>
+                                            <option value="unstable">Unstable Housing</option>
+                                            <option value="stable">Stable Housing</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-4 conditional-question" data-condition="housing-situation" data-values="homeless,temporary,unstable" style="display: none;">
+                                        <label class="form-label">2. How long has the beneficiary been in this housing situation?</label>
+                                        <select class="form-select question-input" data-section="housing" data-question="duration">
+                                            <option value="">Select an option</option>
+                                            <option value="less_than_month">Less than 1 month</option>
+                                            <option value="1_3_months">1-3 months</option>
+                                            <option value="3_6_months">3-6 months</option>
+                                            <option value="6_12_months">6-12 months</option>
+                                            <option value="more_than_year">More than 1 year</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="form-label">3. Is housing assistance needed?</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input question-input" type="radio" name="housing-assistance" value="yes" data-section="housing" data-question="assistance_needed">
+                                            <label class="form-check-label">Yes</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input question-input" type="radio" name="housing-assistance" value="no" data-section="housing" data-question="assistance_needed">
+                                            <label class="form-check-label">No</label>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4 conditional-question" data-condition="housing-assistance_needed" data-values="yes" style="display: none;">
+                                        <label class="form-label">4. What type of housing assistance is needed?</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input question-input" type="checkbox" value="rental_assistance" data-section="housing" data-question="assistance_type">
+                                            <label class="form-check-label">Rental Assistance</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input question-input" type="checkbox" value="utility_assistance" data-section="housing" data-question="assistance_type">
+                                            <label class="form-check-label">Utility Assistance</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input question-input" type="checkbox" value="shelter" data-section="housing" data-question="assistance_type">
+                                            <label class="form-check-label">Emergency Shelter</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input question-input" type="checkbox" value="permanent_housing" data-section="housing" data-question="assistance_type">
+                                            <label class="form-check-label">Permanent Housing</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Food Security Section -->
+                            <div class="card mb-4 question-section" id="foodSection">
+                                <div class="card-header bg-success text-white">
+                                    <h5 class="mb-0">Food Security</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-4">
+                                        <label class="form-label">1. In the last 30 days, has the beneficiary worried about having enough food?</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input question-input" type="radio" name="food-worry" value="yes" data-section="food" data-question="worried" data-required="true">
+                                            <label class="form-check-label">Yes</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input question-input" type="radio" name="food-worry" value="no" data-section="food" data-question="worried" data-required="true">
+                                            <label class="form-check-label">No</label>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4 conditional-question" data-condition="food-worried" data-values="yes" style="display: none;">
+                                        <label class="form-label">2. How often has this happened?</label>
+                                        <select class="form-select question-input" data-section="food" data-question="frequency">
+                                            <option value="">Select an option</option>
+                                            <option value="rarely">Rarely (1-2 days)</option>
+                                            <option value="sometimes">Sometimes (3-10 days)</option>
+                                            <option value="often">Often (11-20 days)</option>
+                                            <option value="frequently">Frequently (21+ days)</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="form-label">3. Is food assistance needed?</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input question-input" type="radio" name="food-assistance" value="yes" data-section="food" data-question="assistance_needed">
+                                            <label class="form-check-label">Yes</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input question-input" type="radio" name="food-assistance" value="no" data-section="food" data-question="assistance_needed">
+                                            <label class="form-check-label">No</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Employment Section -->
+                            <div class="card mb-4 question-section" id="employmentSection">
+                                <div class="card-header bg-info text-white">
+                                    <h5 class="mb-0">Employment</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-4">
+                                        <label class="form-label">1. What is the current employment status?</label>
+                                        <select class="form-select question-input" data-section="employment" data-question="status" data-required="true">
+                                            <option value="">Select an option</option>
+                                            <option value="full_time">Full-time</option>
+                                            <option value="part_time">Part-time</option>
+                                            <option value="unemployed">Unemployed</option>
+                                            <option value="retired">Retired</option>
+                                            <option value="disabled">Unable to work due to disability</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-4 conditional-question" data-condition="employment-status" data-values="unemployed" style="display: none;">
+                                        <label class="form-label">2. How long has the beneficiary been unemployed?</label>
+                                        <select class="form-select question-input" data-section="employment" data-question="unemployment_duration">
+                                            <option value="">Select an option</option>
+                                            <option value="less_than_month">Less than 1 month</option>
+                                            <option value="1_3_months">1-3 months</option>
+                                            <option value="3_6_months">3-6 months</option>
+                                            <option value="6_12_months">6-12 months</option>
+                                            <option value="more_than_year">More than 1 year</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="form-label">3. Is employment assistance needed?</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input question-input" type="radio" name="employment-assistance" value="yes" data-section="employment" data-question="assistance_needed">
+                                            <label class="form-check-label">Yes</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input question-input" type="radio" name="employment-assistance" value="no" data-section="employment" data-question="assistance_needed">
+                                            <label class="form-check-label">No</label>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         <div class="d-flex justify-content-between">
-                            <a href="{% if object %}{% url 'assessment_detail' object.id %}{% else %}{% url 'assessment_list' %}{% endif %}" class="btn btn-secondary">
-                                <i class="bi bi-arrow-left me-2"></i> Cancel
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-save me-2"></i> {% if object %}Update{% else %}Create{% endif %} Assessment
+                            <button type="button" id="backToBasicInfoBtn" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-2"></i> Back to Basic Info
+                            </button>
+                            <button type="button" id="submitAndAnalyzeBtn" class="btn btn-success">
+                                <i class="bi bi-graph-up me-2"></i> Submit & Analyze
                             </button>
                         </div>
-                    </form>
+                    </div>
                 </div>
             </div>
 
             {% if object %}
             <div class="card mt-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Assessment Questions</h5>
+                    <h5 class="mb-0">Custom Assessment Questions</h5>
                     <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addQuestionModal">
                         <i class="bi bi-plus-circle me-2"></i> Add Question
                     </button>
@@ -137,12 +321,88 @@
                     {% else %}
                         <div class="alert alert-info">
                             <i class="bi bi-info-circle-fill me-2"></i>
-                            No questions have been added to this assessment yet. Click "Add Question" to create one.
+                            No custom questions have been added to this assessment yet. Click "Add Question" to create one.
                         </div>
                     {% endif %}
                 </div>
             </div>
             {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- AI Analysis Modal -->
+<div class="modal fade" id="aiAnalysisModal" tabindex="-1" aria-labelledby="aiAnalysisModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="aiAnalysisModalLabel">AI Analysis Results</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-4" id="analysisLoader">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Analyzing assessment data...</p>
+                </div>
+
+                <div id="analysisResults" style="display: none;">
+                    <h4 class="mb-3">Priority Areas Identified</h4>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="card border-danger">
+                                <div class="card-header bg-danger text-white">
+                                    <h5 class="mb-0">High Priority</h5>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-group list-group-flush" id="highPriorityList">
+                                        <!-- Will be populated by JavaScript -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card border-warning">
+                                <div class="card-header bg-warning text-dark">
+                                    <h5 class="mb-0">Medium Priority</h5>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-group list-group-flush" id="mediumPriorityList">
+                                        <!-- Will be populated by JavaScript -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card border-info">
+                                <div class="card-header bg-info text-white">
+                                    <h5 class="mb-0">Low Priority</h5>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-group list-group-flush" id="lowPriorityList">
+                                        <!-- Will be populated by JavaScript -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 class="mb-3 mt-4">Recommended Actions</h4>
+                    <div class="card">
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush" id="recommendedActionsList">
+                                <!-- Will be populated by JavaScript -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="saveAssessmentBtn">Save Assessment</button>
+            </div>
         </div>
     </div>
 </div>
@@ -186,6 +446,32 @@
                             Required
                         </label>
                     </div>
+                    <div class="mb-3">
+                        <label for="conditionalLogic" class="form-label">Conditional Logic</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="enableConditionalLogic">
+                            <label class="form-check-label" for="enableConditionalLogic">
+                                Show this question only when...
+                            </label>
+                        </div>
+                        <div id="conditionalLogicContainer" style="display: none;" class="mt-2">
+                            <select class="form-select mb-2" id="dependentQuestion">
+                                <option value="">Select a question</option>
+                                {% for question in questions %}
+                                <option value="{{ question.id }}">{{ question.text }}</option>
+                                {% endfor %}
+                            </select>
+                            <select class="form-select mb-2" id="conditionalOperator">
+                                <option value="equals">equals</option>
+                                <option value="not_equals">does not equal</option>
+                                <option value="contains">contains</option>
+                                <option value="greater_than">is greater than</option>
+                                <option value="less_than">is less than</option>
+                            </select>
+                            <input type="text" class="form-control" id="conditionalValue" placeholder="Value">
+                            <input type="hidden" name="conditional_logic" id="conditionalLogicJson">
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -214,6 +500,360 @@
                     choicesContainer.style.display = 'none';
                 }
             });
+        }
+
+        // Conditional logic for add question form
+        const enableConditionalLogic = document.getElementById('enableConditionalLogic');
+        const conditionalLogicContainer = document.getElementById('conditionalLogicContainer');
+        const conditionalLogicJson = document.getElementById('conditionalLogicJson');
+
+        if (enableConditionalLogic && conditionalLogicContainer) {
+            enableConditionalLogic.addEventListener('change', function() {
+                conditionalLogicContainer.style.display = this.checked ? 'block' : 'none';
+            });
+        }
+
+        // Handle form submission with conditional logic
+        const addQuestionForm = document.getElementById('addQuestionForm');
+        if (addQuestionForm) {
+            addQuestionForm.addEventListener('submit', function() {
+                if (enableConditionalLogic.checked) {
+                    const logic = {
+                        question_id: document.getElementById('dependentQuestion').value,
+                        operator: document.getElementById('conditionalOperator').value,
+                        value: document.getElementById('conditionalValue').value
+                    };
+                    conditionalLogicJson.value = JSON.stringify(logic);
+                }
+            });
+        }
+
+        // Navigation between sections
+        const basicInfoSection = document.getElementById('basicInfoSection');
+        const questionsSection = document.getElementById('questionsSection');
+        const nextToQuestionsBtn = document.getElementById('nextToQuestionsBtn');
+        const backToBasicInfoBtn = document.getElementById('backToBasicInfoBtn');
+        const progressBar = document.getElementById('assessmentProgress');
+
+        if (nextToQuestionsBtn) {
+            nextToQuestionsBtn.addEventListener('click', function() {
+                basicInfoSection.style.display = 'none';
+                questionsSection.style.display = 'block';
+                progressBar.style.width = '50%';
+                progressBar.textContent = '50%';
+                progressBar.setAttribute('aria-valuenow', '50');
+            });
+        }
+
+        if (backToBasicInfoBtn) {
+            backToBasicInfoBtn.addEventListener('click', function() {
+                questionsSection.style.display = 'none';
+                basicInfoSection.style.display = 'block';
+                progressBar.style.width = '0%';
+                progressBar.textContent = '0%';
+                progressBar.setAttribute('aria-valuenow', '0');
+            });
+        }
+
+        // Handle conditional questions in the dynamic form
+        const questionInputs = document.querySelectorAll('.question-input');
+        questionInputs.forEach(input => {
+            input.addEventListener('change', function() {
+                const section = this.getAttribute('data-section');
+                const question = this.getAttribute('data-question');
+                const value = this.type === 'checkbox' ? (this.checked ? this.value : '') : this.value;
+
+                // Find conditional questions that depend on this answer
+                const conditionalQuestions = document.querySelectorAll(`.conditional-question[data-condition="${section}-${question}"]`);
+                conditionalQuestions.forEach(conditionalQuestion => {
+                    const validValues = conditionalQuestion.getAttribute('data-values').split(',');
+                    if (validValues.includes(value)) {
+                        conditionalQuestion.style.display = 'block';
+                    } else {
+                        conditionalQuestion.style.display = 'none';
+                        // Clear inputs in hidden conditional questions
+                        const hiddenInputs = conditionalQuestion.querySelectorAll('input, select');
+                        hiddenInputs.forEach(hiddenInput => {
+                            if (hiddenInput.type === 'checkbox' || hiddenInput.type === 'radio') {
+                                hiddenInput.checked = false;
+                            } else {
+                                hiddenInput.value = '';
+                            }
+                        });
+                    }
+                });
+
+                // Update progress
+                updateProgress();
+            });
+        });
+
+        // Function to update progress bar
+        function updateProgress() {
+            const requiredInputs = document.querySelectorAll('.question-input[data-required="true"]');
+            let completed = 0;
+
+            requiredInputs.forEach(input => {
+                if (input.type === 'radio') {
+                    // For radio buttons, check if any in the group is selected
+                    const name = input.getAttribute('name');
+                    const radioGroup = document.querySelectorAll(`input[name="${name}"]:checked`);
+                    if (radioGroup.length > 0) {
+                        completed++;
+                    }
+                } else if (input.value) {
+                    completed++;
+                }
+            });
+
+            const totalRequired = requiredInputs.length / (requiredInputs[0]?.type === 'radio' ? 2 : 1); // Adjust for radio groups
+            const percentComplete = Math.round((completed / totalRequired) * 50) + 50; // Start at 50% after basic info
+
+            progressBar.style.width = `${percentComplete}%`;
+            progressBar.textContent = `${percentComplete}%`;
+            progressBar.setAttribute('aria-valuenow', percentComplete);
+        }
+
+        // Submit and Analyze button
+        const submitAndAnalyzeBtn = document.getElementById('submitAndAnalyzeBtn');
+        const aiAnalysisModal = new bootstrap.Modal(document.getElementById('aiAnalysisModal'));
+        const analysisLoader = document.getElementById('analysisLoader');
+        const analysisResults = document.getElementById('analysisResults');
+        const highPriorityList = document.getElementById('highPriorityList');
+        const mediumPriorityList = document.getElementById('mediumPriorityList');
+        const lowPriorityList = document.getElementById('lowPriorityList');
+        const recommendedActionsList = document.getElementById('recommendedActionsList');
+
+        if (submitAndAnalyzeBtn) {
+            submitAndAnalyzeBtn.addEventListener('click', function() {
+                // Show the analysis modal
+                aiAnalysisModal.show();
+                analysisLoader.style.display = 'block';
+                analysisResults.style.display = 'none';
+
+                // Simulate AI analysis (would be an API call in a real implementation)
+                setTimeout(() => {
+                    analysisLoader.style.display = 'none';
+                    analysisResults.style.display = 'block';
+
+                    // Clear previous results
+                    highPriorityList.innerHTML = '';
+                    mediumPriorityList.innerHTML = '';
+                    lowPriorityList.innerHTML = '';
+                    recommendedActionsList.innerHTML = '';
+
+                    // Get form data
+                    const formData = collectFormData();
+
+                    // Analyze housing data
+                    if (formData.housing && formData.housing.situation) {
+                        if (formData.housing.situation === 'homeless' || formData.housing.situation === 'temporary') {
+                            addPriorityItem(highPriorityList, 'Housing Stability');
+                            addRecommendedAction('Connect with emergency housing services immediately');
+                            addRecommendedAction('Schedule appointment with housing specialist within 48 hours');
+                        } else if (formData.housing.situation === 'unstable') {
+                            addPriorityItem(mediumPriorityList, 'Housing Stability');
+                            addRecommendedAction('Provide rental assistance application');
+                            addRecommendedAction('Refer to housing counseling services');
+                        }
+                    }
+
+                    // Analyze food security data
+                    if (formData.food && formData.food.worried === 'yes') {
+                        if (formData.food.frequency === 'often' || formData.food.frequency === 'frequently') {
+                            addPriorityItem(highPriorityList, 'Food Security');
+                            addRecommendedAction('Provide emergency food assistance');
+                            addRecommendedAction('Connect with local food bank');
+                        } else {
+                            addPriorityItem(mediumPriorityList, 'Food Security');
+                            addRecommendedAction('Provide SNAP application assistance');
+                        }
+                    }
+
+                    // Analyze employment data
+                    if (formData.employment && formData.employment.status === 'unemployed') {
+                        if (formData.employment.unemployment_duration === 'more_than_year' || 
+                            formData.employment.unemployment_duration === '6_12_months') {
+                            addPriorityItem(mediumPriorityList, 'Employment');
+                            addRecommendedAction('Refer to job training program');
+                            addRecommendedAction('Schedule appointment with employment counselor');
+                        } else {
+                            addPriorityItem(lowPriorityList, 'Employment');
+                            addRecommendedAction('Provide job search resources');
+                        }
+                    }
+
+                    // Add some default items if lists are empty
+                    if (highPriorityList.children.length === 0) {
+                        addPriorityItem(lowPriorityList, 'Overall Needs Assessment');
+                    }
+                    if (recommendedActionsList.children.length === 0) {
+                        addRecommendedAction('Schedule follow-up assessment in 30 days');
+                    }
+
+                }, 2000);
+            });
+        }
+
+        // Helper function to add priority items
+        function addPriorityItem(list, text) {
+            const li = document.createElement('li');
+            li.className = 'list-group-item';
+            li.textContent = text;
+            list.appendChild(li);
+        }
+
+        // Helper function to add recommended actions
+        function addRecommendedAction(text) {
+            const li = document.createElement('li');
+            li.className = 'list-group-item';
+            li.textContent = text;
+            recommendedActionsList.appendChild(li);
+        }
+
+        // Helper function to collect form data
+        function collectFormData() {
+            const formData = {};
+
+            // Collect data from question inputs
+            questionInputs.forEach(input => {
+                const section = input.getAttribute('data-section');
+                const question = input.getAttribute('data-question');
+
+                if (!formData[section]) {
+                    formData[section] = {};
+                }
+
+                if (input.type === 'checkbox') {
+                    if (input.checked) {
+                        if (!formData[section][question]) {
+                            formData[section][question] = [];
+                        }
+                        formData[section][question].push(input.value);
+                    }
+                } else if (input.type === 'radio') {
+                    if (input.checked) {
+                        formData[section][question] = input.value;
+                    }
+                } else {
+                    formData[section][question] = input.value;
+                }
+            });
+
+            return formData;
+        }
+
+        // Save Assessment button
+        const saveAssessmentBtn = document.getElementById('saveAssessmentBtn');
+        if (saveAssessmentBtn) {
+            saveAssessmentBtn.addEventListener('click', function() {
+                // Submit the form
+                document.getElementById('assessmentForm').submit();
+            });
+        }
+
+        // Offline mode functionality
+        const offlineMode = document.getElementById('offlineMode');
+        const saveOfflineBtn = document.getElementById('saveOfflineBtn');
+
+        if (offlineMode && saveOfflineBtn) {
+            // Check if browser supports localStorage
+            const storageAvailable = (type) => {
+                try {
+                    const storage = window[type];
+                    const x = '__storage_test__';
+                    storage.setItem(x, x);
+                    storage.removeItem(x);
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            };
+
+            const localStorageAvailable = storageAvailable('localStorage');
+
+            if (!localStorageAvailable) {
+                offlineMode.disabled = true;
+                saveOfflineBtn.disabled = true;
+                saveOfflineBtn.title = 'Local storage not available in your browser';
+            }
+
+            // Toggle offline mode
+            offlineMode.addEventListener('change', function() {
+                if (this.checked) {
+                    // Load data from localStorage if available
+                    if (localStorageAvailable) {
+                        const savedData = localStorage.getItem('offlineAssessment');
+                        if (savedData) {
+                            try {
+                                const parsedData = JSON.parse(savedData);
+                                // Populate form with saved data
+                                populateFormWithSavedData(parsedData);
+                                alert('Loaded assessment data from offline storage.');
+                            } catch (e) {
+                                console.error('Error parsing saved data:', e);
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Save for offline use
+            saveOfflineBtn.addEventListener('click', function() {
+                if (localStorageAvailable) {
+                    // Collect all form data
+                    const formData = {
+                        basicInfo: {
+                            title: document.getElementById('{{ form.title.id_for_label }}').value,
+                            case: document.getElementById('{{ form.case.id_for_label }}').value,
+                            description: document.getElementById('{{ form.description.id_for_label }}').value,
+                            amount_received: document.getElementById('{{ form.amount_received.id_for_label }}').value,
+                            income_amount: document.getElementById('{{ form.income_amount.id_for_label }}').value
+                        },
+                        questions: collectFormData()
+                    };
+
+                    // Save to localStorage
+                    localStorage.setItem('offlineAssessment', JSON.stringify(formData));
+                    alert('Assessment saved for offline use. You can access it later by enabling offline mode.');
+                }
+            });
+
+            // Helper function to populate form with saved data
+            function populateFormWithSavedData(data) {
+                // Populate basic info
+                if (data.basicInfo) {
+                    document.getElementById('{{ form.title.id_for_label }}').value = data.basicInfo.title || '';
+                    document.getElementById('{{ form.case.id_for_label }}').value = data.basicInfo.case || '';
+                    document.getElementById('{{ form.description.id_for_label }}').value = data.basicInfo.description || '';
+                    document.getElementById('{{ form.amount_received.id_for_label }}').value = data.basicInfo.amount_received || '0.00';
+                    document.getElementById('{{ form.income_amount.id_for_label }}').value = data.basicInfo.income_amount || '0.00';
+                }
+
+                // Populate questions
+                if (data.questions) {
+                    questionInputs.forEach(input => {
+                        const section = input.getAttribute('data-section');
+                        const question = input.getAttribute('data-question');
+
+                        if (data.questions[section] && data.questions[section][question] !== undefined) {
+                            if (input.type === 'checkbox') {
+                                if (Array.isArray(data.questions[section][question])) {
+                                    input.checked = data.questions[section][question].includes(input.value);
+                                }
+                            } else if (input.type === 'radio') {
+                                input.checked = (data.questions[section][question] === input.value);
+                            } else {
+                                input.value = data.questions[section][question];
+                            }
+
+                            // Trigger change event to handle conditional logic
+                            const event = new Event('change');
+                            input.dispatchEvent(event);
+                        }
+                    });
+                }
+            }
         }
     });
 </script>

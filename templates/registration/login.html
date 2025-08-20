@@ -16,7 +16,7 @@
                         Your username and password didn't match. Please try again.
                     </div>
                     {% endif %}
-                    
+
                     {% if next %}
                         {% if user.is_authenticated %}
                         <div class="alert alert-warning">
@@ -29,8 +29,8 @@
                         </div>
                         {% endif %}
                     {% endif %}
-                    
-                    <form method="post" action="{% url 'login' %}">
+
+                    <form method="post" action="{% url 'login' %}" id="loginForm">
                         {% csrf_token %}
                         <div class="mb-3">
                             <label for="id_username" class="form-label">Username</label>
@@ -40,8 +40,24 @@
                             <label for="id_password" class="form-label">Password</label>
                             <input type="password" name="password" id="id_password" class="form-control" required>
                         </div>
+
+                        <!-- 2FA Section (OTP) -->
+                        <div class="mb-3" id="otpSection" style="display: none;">
+                            <label for="id_otp" class="form-label">One-Time Password (OTP)</label>
+                            <input type="text" name="otp" id="id_otp" class="form-control" placeholder="Enter the code sent to your device">
+                            <div class="form-text">
+                                A verification code has been sent to your registered device.
+                            </div>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="enable2fa" name="enable2fa">
+                            <label class="form-check-label" for="enable2fa">Enable 2-Factor Authentication</label>
+                        </div>
+
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">Login</button>
+                            <button type="submit" class="btn btn-primary" id="loginButton">Login</button>
+                            <button type="button" class="btn btn-secondary" id="requestOtpButton" style="display: none;">Request OTP</button>
                         </div>
                         <input type="hidden" name="next" value="{{ next }}">
                     </form>
@@ -55,4 +71,41 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const enable2faCheckbox = document.getElementById('enable2fa');
+        const otpSection = document.getElementById('otpSection');
+        const requestOtpButton = document.getElementById('requestOtpButton');
+        const loginButton = document.getElementById('loginButton');
+        const loginForm = document.getElementById('loginForm');
+
+        // Toggle OTP section when 2FA checkbox is clicked
+        enable2faCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                requestOtpButton.style.display = 'block';
+                loginButton.textContent = 'Verify & Login';
+            } else {
+                otpSection.style.display = 'none';
+                requestOtpButton.style.display = 'none';
+                loginButton.textContent = 'Login';
+            }
+        });
+
+        // Simulate OTP request (in a real implementation, this would make an API call)
+        requestOtpButton.addEventListener('click', function() {
+            const username = document.getElementById('id_username').value;
+            const password = document.getElementById('id_password').value;
+
+            if (!username || !password) {
+                alert('Please enter your username and password first.');
+                return;
+            }
+
+            // Simulate OTP being sent
+            alert('A verification code has been sent to your registered device.');
+            otpSection.style.display = 'block';
+        });
+    });
+</script>
 {% endblock %}
