@@ -30,7 +30,7 @@ from .serializers import (
 
 # Authentication Views
 def login_view(request):
-    """Custom login view that serves the login page at the root URL"""
+    """Custom login view that serves the landing page at the root URL and handles login"""
     if request.user.is_authenticated:
         return redirect('dashboard_redirect')
 
@@ -45,8 +45,10 @@ def login_view(request):
             return redirect(next_url)
         else:
             messages.error(request, "Invalid username or password.")
+            return render(request, 'login.html')
 
-    return render(request, 'login.html')
+    # For GET requests, show the landing page
+    return render(request, 'landing.html')
 
 # API ViewSets
 class UserViewSet(viewsets.ModelViewSet):

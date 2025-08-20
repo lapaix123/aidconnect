@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Welcome to AidConnect - Humanitarian Aid Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <!-- Hero Section -->
+    <div class="position-relative">
+        <img src="{% static 'images/viup image.jpg' %}" alt="Humanitarian Aid" class="img-fluid w-100" style="max-height: 500px; object-fit: cover;">
+        <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center" style="background-color: rgba(0,0,0,0.5);">
+            <div class="container text-white">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h1 class="display-4 fw-bold">AidConnect</h1>
+                        <p class="lead">A comprehensive humanitarian aid management system designed to streamline case management, needs assessment, and resource allocation.</p>
+                        <a href="{% url 'login' %}" class="btn btn-primary btn-lg mt-3">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Login to System
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="container py-5">
+        <h2 class="text-center mb-5">Key Features</h2>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-people-fill text-primary fs-1 mb-3"></i>
+                        <h5 class="card-title">Beneficiary Management</h5>
+                        <p class="card-text">Efficiently manage beneficiary information, track their needs, and monitor their progress over time.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-clipboard-data text-primary fs-1 mb-3"></i>
+                        <h5 class="card-title">Needs Assessment</h5>
+                        <p class="card-text">Conduct comprehensive needs assessments with AI-powered analysis to identify priority areas.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-graph-up text-primary fs-1 mb-3"></i>
+                        <h5 class="card-title">Reporting & Analytics</h5>
+                        <p class="card-text">Generate detailed reports and visualize data to make informed decisions and track program outcomes.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Partners Section -->
+    <div class="bg-light py-5">
+        <div class="container">
+            <h2 class="text-center mb-5">Our Partners</h2>
+            <div class="row align-items-center justify-content-center">
+                <div class="col-md-4 text-center mb-4">
+                    <img src="{% static 'images/minaloc2.jpg' %}" alt="Ministry of Local Government" class="img-fluid" style="max-height: 150px;">
+                </div>
+                <div class="col-md-4 text-center mb-4">
+                    <img src="{% static 'images/partenar1.jpg' %}" alt="Partner Organization" class="img-fluid" style="max-height: 150px;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Call to Action -->
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center">
+                <h2>Ready to get started?</h2>
+                <p class="lead">Login to access the full features of AidConnect and start managing humanitarian aid efficiently.</p>
+                <a href="{% url 'login' %}" class="btn btn-primary btn-lg mt-3">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>Login Now
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

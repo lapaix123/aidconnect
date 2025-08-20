@@ -54,7 +54,8 @@ urlpatterns = [
     path('api/', include(router.urls)),
 
     # Authentication
-    path('', login_view, name='login'),  # Root URL serves the login page
+    path('', login_view, name='home'),  # Root URL serves the landing page
+    path('login/', login_view, name='login'),  # Login URL for the login form
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
 
     # Dashboards
