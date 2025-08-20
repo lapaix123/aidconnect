@@ -47,8 +47,13 @@ def login_view(request):
             messages.error(request, "Invalid username or password.")
             return render(request, 'login.html')
 
-    # For GET requests, show the landing page
-    return render(request, 'landing.html')
+    # For GET requests, check the path to determine which template to render
+    if request.path == '/login/':
+        # If the request is for the login page, render the login template
+        return render(request, 'login.html')
+    else:
+        # For the root URL, show the landing page
+        return render(request, 'landing.html')
 
 # API ViewSets
 class UserViewSet(viewsets.ModelViewSet):

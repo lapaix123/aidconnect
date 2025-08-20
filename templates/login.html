@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Login - AidConnect{% endblock %}
 
@@ -6,11 +7,12 @@
 <div class="container">
     <div class="row justify-content-center">
         <div class="col-md-6 col-lg-5">
-            <div class="card mt-5">
-                <div class="card-header bg-primary text-white text-center">
-                    <h4 class="mb-0">AidConnect Login</h4>
+            <div class="card mt-5 shadow-lg">
+                <div class="card-header bg-primary text-white text-center py-3">
+                    <img src="{% static 'images/logo.svg' %}" alt="AidConnect Logo" height="50" class="mb-2">
+                    <h4 class="mb-0">Welcome to AidConnect</h4>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-4">
                     {% if messages %}
                         {% for message in messages %}
                             <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
@@ -19,7 +21,7 @@
                             </div>
                         {% endfor %}
                     {% endif %}
-                    
+
                     {% if next %}
                         {% if user.is_authenticated %}
                             <div class="alert alert-warning">
@@ -32,30 +34,88 @@
                             </div>
                         {% endif %}
                     {% endif %}
-                    
+
                     <form method="post" action="{% url 'login' %}">
                         {% csrf_token %}
                         <div class="mb-3">
-                            <label for="id_username" class="form-label">Username</label>
-                            <input type="text" name="username" id="id_username" class="form-control" required autofocus>
+                            <label for="id_username" class="form-label">
+                                <i class="bi bi-person-fill me-2"></i>Username
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                <input type="text" name="username" id="id_username" class="form-control" placeholder="Enter your username" required autofocus>
+                            </div>
                         </div>
                         <div class="mb-3">
-                            <label for="id_password" class="form-label">Password</label>
-                            <input type="password" name="password" id="id_password" class="form-control" required>
+                            <label for="id_password" class="form-label">
+                                <i class="bi bi-lock-fill me-2"></i>Password
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                <input type="password" name="password" id="id_password" class="form-control" placeholder="Enter your password" required>
+                            </div>
                         </div>
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">Login</button>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="rememberMe" name="remember_me">
+                            <label class="form-check-label" for="rememberMe">Remember me</label>
+                        </div>
+                        <div class="d-grid gap-2 mb-3">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>Login
+                            </button>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="showPassword">
+                                <label class="form-check-label" for="showPassword">Show password</label>
+                            </div>
+                            <div>
+                                <a href="#" class="text-decoration-none">Need help?</a>
+                            </div>
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="#" class="text-decoration-none">Forgot password?</a>
                         </div>
                         <input type="hidden" name="next" value="{{ next }}">
                     </form>
                 </div>
-                <div class="card-footer text-center">
+                <div class="card-footer text-center py-3 bg-light">
                     <p class="mb-0">
-                        <small>Humanitarian Aid Management System</small>
+                        <strong>Humanitarian Aid Management System</strong>
                     </p>
+                    <small class="text-muted">Secure access for authorized personnel only</small>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    .card {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .card-header {
+        border-bottom: none;
+    }
+    .btn-primary {
+        transition: all 0.3s ease;
+    }
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Show/hide password functionality
+        const passwordInput = document.getElementById('id_password');
+        const showPasswordCheckbox = document.getElementById('showPassword');
+
+        showPasswordCheckbox.addEventListener('change', function() {
+            passwordInput.type = this.checked ? 'text' : 'password';
+        });
+    });
+</script>
 {% endblock %}
